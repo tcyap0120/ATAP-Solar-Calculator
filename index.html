@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Solar Calculator by TC</title>
+    <title>Solar Calculator by TC - Bill Calculator</title>
     
     <!-- PWA Config -->
     <link rel="manifest" href="/ATAP-Solar-Calculator/manifest.json">
@@ -11,7 +11,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="SolarTC">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/4344/4344932.png">
+    <link rel="apple-touch-icon" href="/ATAP-Solar-Calculator/icon.png">
+    <link rel="icon" type="image/png" href="/ATAP-Solar-Calculator/icon.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -23,8 +24,22 @@
       ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
       ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
-    <script type="module" crossorigin src="/ATAP-Solar-Calculator/assets/index-D_3zJTxN.js"></script>
-  </head>
+
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.5.0",
+    "vite": "https://aistudiocdn.com/vite@^7.2.4",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/ATAP-Solar-Calculator/assets/index-CWMo3JlN.js"></script>
+</head>
   <body class="bg-slate-50 text-slate-900 antialiased selection:bg-yellow-200 selection:text-yellow-900">
     <div id="root"></div>
   </body>
