@@ -71,17 +71,17 @@ export const SavingsGraphGenerator: React.FC<SavingsGraphGeneratorProps> = ({ in
   // --- Graph Data Generation ---
   const graphsData = useMemo(() => {
     const effectiveUsage = typeof usageKwh === 'number' ? usageKwh : 0;
-    
+
     // 1. Determine Max Batteries (Match kWh method)
     // Night Usage Daily = (Monthly Usage / 30) * (Night %)
     // Max Batteries = Ceil(Night Usage Daily / Battery Capacity)
     const dailyUsage = effectiveUsage / 30;
     const nightPercent = 1 - (daytimePercent / 100);
     const dailyNightUsage = dailyUsage * nightPercent;
-    
+
     // Determine how many batteries needed to cover night load completely
     const maxBatteriesNeeded = Math.ceil(dailyNightUsage / BATTERY_CAPACITY_KWH);
-    
+
     // Clamp to a reasonable visualization limit (e.g., 10) to prevent UI crash on huge inputs
     const batteryLimit = Math.min(maxBatteriesNeeded, 10);
 
@@ -95,8 +95,8 @@ export const SavingsGraphGenerator: React.FC<SavingsGraphGeneratorProps> = ({ in
       // X-axis: Panels from 6 to 54
       for (let p = 6; p <= 54; p++) {
         const sim = simulateSolar(effectiveUsage, daytimePercent, p, b);
-        const pct = sim.originalBill.finalTotal > 0 
-          ? (sim.monthlySavings / sim.originalBill.finalTotal) * 100 
+        const pct = sim.originalBill.finalTotal > 0
+          ? (sim.monthlySavings / sim.originalBill.finalTotal) * 100
           : 0;
 
         const exportUnits = sim.newBill.exportUnits || 0;
@@ -128,21 +128,21 @@ export const SavingsGraphGenerator: React.FC<SavingsGraphGeneratorProps> = ({ in
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      
+
       {/* Inputs Section */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
           <TrendingUp className="text-blue-600" size={24} />
           Analysis Configuration
         </h2>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="flex flex-col gap-2">
             <InputNumber
               label="Avg. Monthly Bill"
               value={billAmount}
               onChange={handleBillChange}
-              icon={<DollarSign size={16}/>}
+              icon={<DollarSign size={16} />}
               unit=" RM"
             />
             {gapWarning && (
@@ -151,7 +151,7 @@ export const SavingsGraphGenerator: React.FC<SavingsGraphGeneratorProps> = ({ in
                 <div className="flex-1">
                   <p className="font-bold mb-0.5">Tariff Blind Spot</p>
                   <button onClick={fixBillAmount} className="mt-1 text-blue-600 font-bold hover:underline hover:text-blue-700 flex items-center gap-1 transition-colors">
-                      Round up <RefreshCw size={10}/>
+                    Round up <RefreshCw size={10} />
                   </button>
                 </div>
               </div>
@@ -161,7 +161,7 @@ export const SavingsGraphGenerator: React.FC<SavingsGraphGeneratorProps> = ({ in
             label="Avg. Monthly Usage"
             value={usageKwh}
             onChange={handleUsageChange}
-            icon={<Zap size={16}/>}
+            icon={<Zap size={16} />}
             unit=" kWh"
           />
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
@@ -169,13 +169,13 @@ export const SavingsGraphGenerator: React.FC<SavingsGraphGeneratorProps> = ({ in
               <Zap size={16} /> TNB Phase
             </label>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={() => setPhase('single')}
                 className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${phase === 'single' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
               >
                 Single Phase
               </button>
-              <button 
+              <button
                 onClick={() => setPhase('three')}
                 className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${phase === 'three' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
               >
@@ -183,18 +183,25 @@ export const SavingsGraphGenerator: React.FC<SavingsGraphGeneratorProps> = ({ in
               </button>
             </div>
           </div>
-          
-           <div className="flex items-end">
-             <div className="w-full">
-                <InputSlider
-                  label="Daytime Usage %"
-                  value={daytimePercent}
-                  min={0} max={100} unit="%"
-                  onChange={setDaytimePercent}
-                  icon={<Sun size={16}/>}
-               />
-             </div>
-           </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <InputSlider
+                label="Daytime Usage %"
+                value={daytimePercent}
+                min={0} max={100} unit="%"
+                onChange={setDaytimePercent}
+                icon={<Sun size={16} />}
+              />
+            </div>
+            <button
+              onClick={() => setDaytimePercent(30)}
+              className="mt-6 p-2 hover:bg-slate-100 rounded-lg transition-colors group"
+              title="Reset to 30%"
+            >
+              <RefreshCw size={16} className="text-slate-400 group-hover:text-blue-600 group-hover:rotate-180 transition-all duration-300" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -222,23 +229,23 @@ export const SavingsGraphGenerator: React.FC<SavingsGraphGeneratorProps> = ({ in
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={series.data} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis 
-                    dataKey="panels" 
-                    type="number" 
-                    domain={[6, 54]} 
+                  <XAxis
+                    dataKey="panels"
+                    type="number"
+                    domain={[6, 54]}
                     tickCount={9}
                     tick={{ fontSize: 10, fill: '#94a3b8' }}
                     label={{ value: 'Panels', position: 'bottom', offset: 0, fontSize: 10, fill: '#94a3b8' }}
                   />
                   {/* Left Axis: RM */}
-                  <YAxis 
+                  <YAxis
                     yAxisId="left"
                     tick={{ fontSize: 10, fill: '#2563eb' }}
                     tickFormatter={(val) => `RM${val}`}
                     width={45}
                   />
                   {/* Right Axis: % */}
-                  <YAxis 
+                  <YAxis
                     yAxisId="right"
                     orientation="right"
                     tick={{ fontSize: 10, fill: '#10b981' }}
@@ -246,16 +253,16 @@ export const SavingsGraphGenerator: React.FC<SavingsGraphGeneratorProps> = ({ in
                     width={40}
                     domain={[0, 100]}
                   />
-                  
-                  <Tooltip 
+
+                  <Tooltip
                     formatter={(value: number, name: string) => {
                       if (name === 'savedPercentage') return [`${Math.round(value)}%`, 'Bill Saved'];
-                      return [`RM ${value.toLocaleString(undefined, {maximumFractionDigits:0})}`, 'Savings'];
+                      return [`RM ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'Savings'];
                     }}
                     labelFormatter={(label) => `${label} Panels`}
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
-                  
+
                   {phase === 'single' && (
                     <ReferenceLine yAxisId="left" x={22} stroke="#f59e0b" strokeDasharray="3 3">
                       <Label value="Single Phase Limit" position="insideTopRight" angle={-90} offset={20} style={{ fill: '#f59e0b', fontSize: 10, fontWeight: 'bold' }} />
@@ -264,34 +271,34 @@ export const SavingsGraphGenerator: React.FC<SavingsGraphGeneratorProps> = ({ in
 
                   {series.crossoverPanel && (
                     <ReferenceLine yAxisId="left" x={series.crossoverPanel} stroke="#ef4444" strokeDasharray="3 3">
-                      <Label 
-                        value="Export > Import" 
-                        position="center" 
-                        angle={-90} 
+                      <Label
+                        value="Export > Import"
+                        position="center"
+                        angle={-90}
                         dx={-15}
-                        style={{ fill: '#ef4444', fontSize: 10, fontWeight: 'bold', textShadow: '0px 0px 3px white' }} 
+                        style={{ fill: '#ef4444', fontSize: 10, fontWeight: 'bold', textShadow: '0px 0px 3px white' }}
                       />
                     </ReferenceLine>
                   )}
 
                   {/* Primary Line: Savings RM */}
-                  <Line 
+                  <Line
                     yAxisId="left"
-                    type="monotone" 
-                    dataKey="savings" 
-                    stroke="#2563eb" 
-                    strokeWidth={2} 
+                    type="monotone"
+                    dataKey="savings"
+                    stroke="#2563eb"
+                    strokeWidth={2}
                     dot={false}
                     activeDot={{ r: 4, fill: '#2563eb', stroke: '#fff', strokeWidth: 2 }}
                   />
-                  
+
                   {/* Secondary Line: Savings % (Invisible but active for tooltip and axis scaling) */}
-                  <Line 
+                  <Line
                     yAxisId="right"
-                    type="monotone" 
-                    dataKey="savedPercentage" 
-                    stroke="#10b981" 
-                    strokeWidth={0} 
+                    type="monotone"
+                    dataKey="savedPercentage"
+                    stroke="#10b981"
+                    strokeWidth={0}
                     strokeOpacity={0}
                     dot={false}
                     activeDot={false}
@@ -299,18 +306,18 @@ export const SavingsGraphGenerator: React.FC<SavingsGraphGeneratorProps> = ({ in
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            
-             <p className="text-[10px] text-center text-slate-400 mt-2">
-               X: Panel Count (6-54) • Y1: Savings (RM) • Y2: Bill % Saved
+
+            <p className="text-[10px] text-center text-slate-400 mt-2">
+              X: Panel Count (6-54) • Y1: Savings (RM) • Y2: Bill % Saved
             </p>
           </div>
         ))}
       </div>
-      
+
       {graphsData.length === 0 && (
-         <div className="text-center p-12 text-slate-400">
-           Enter usage to generate graphs.
-         </div>
+        <div className="text-center p-12 text-slate-400">
+          Enter usage to generate graphs.
+        </div>
       )}
     </div>
   );

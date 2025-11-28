@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { simulateSolar, calculateBill, getKwhFromBill } from './utils/billingEngine';
+import { simulateSolar, calculateBill, getKwhFromBill, calculateSystemCost } from './utils/billingEngine';
 import { InputSlider } from './components/InputSlider';
 import { InputNumber } from './components/InputNumber';
 import { BillDetails } from './components/BillDetails';
@@ -33,7 +33,7 @@ const App = () => {
     const res = calculateBill(1200);
     return parseFloat(res.finalTotal.toFixed(2));
   });
-  
+
   const [daytimePercent, setDaytimePercent] = useState<number>(30); // Default 30%
   const [panelCount, setPanelCount] = useState<number>(12);
   const [batteryCount, setBatteryCount] = useState<number>(1);
@@ -136,8 +136,8 @@ const App = () => {
   }, [usageKwh, daytimePercent, panelCount, batteryCount]);
 
   // Derived calculations for UI displays
-  const savingsPercent = simulation.originalBill.finalTotal > 0 
-    ? (simulation.monthlySavings / simulation.originalBill.finalTotal) * 100 
+  const savingsPercent = simulation.originalBill.finalTotal > 0
+    ? (simulation.monthlySavings / simulation.originalBill.finalTotal) * 100
     : 0;
 
   const totalKwp = (panelCount * 0.62).toFixed(2);
@@ -146,44 +146,44 @@ const App = () => {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-         <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl animate-in fade-in zoom-in duration-500 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
-            
-            <div className="flex justify-center mb-6">
-               <div className="bg-blue-50 p-4 rounded-2xl">
-                 <Sun size={48} className="text-blue-600 fill-blue-600 animate-pulse" />
-               </div>
+        <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl animate-in fade-in zoom-in duration-500 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
+
+          <div className="flex justify-center mb-6">
+            <div className="bg-blue-50 p-4 rounded-2xl">
+              <Sun size={48} className="text-blue-600 fill-blue-600 animate-pulse" />
             </div>
-            
-            <h1 className="text-2xl font-bold text-center text-slate-800 mb-2">Solar Calculator by TC</h1>
-            <p className="text-center text-slate-500 mb-8 text-sm">Welcome back. Please enter your access code to continue.</p>
-            
-            <form onSubmit={handleLogin} className="space-y-4">
-               <div>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
-                    <input 
-                      type="password" 
-                      placeholder="Access Code"
-                      value={accessCode}
-                      onChange={(e) => setAccessCode(e.target.value)}
-                      className={`w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl outline-none focus:ring-2 transition-all ${authError ? 'border-red-300 focus:ring-red-200' : 'border-slate-200 focus:ring-blue-200 focus:border-blue-400'}`}
-                    />
-                  </div>
-                  {authError && <p className="text-xs text-red-500 mt-2 pl-1 font-medium">Incorrect access code. Please try again.</p>}
-               </div>
-               
-               <button 
-                 type="submit"
-                 className="w-full bg-slate-900 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 group"
-               >
-                 Enter App
-                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-               </button>
-            </form>
-            
-            <p className="text-center text-xs text-slate-300 mt-8">Ver 2.0.0 • Protected System</p>
-         </div>
+          </div>
+
+          <h1 className="text-2xl font-bold text-center text-slate-800 mb-2">Solar Calculator by TC</h1>
+          <p className="text-center text-slate-500 mb-8 text-sm">Welcome back. Please enter your access code to continue.</p>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  type="password"
+                  placeholder="Access Code"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                  className={`w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl outline-none focus:ring-2 transition-all ${authError ? 'border-red-300 focus:ring-red-200' : 'border-slate-200 focus:ring-blue-200 focus:border-blue-400'}`}
+                />
+              </div>
+              {authError && <p className="text-xs text-red-500 mt-2 pl-1 font-medium">Incorrect access code. Please try again.</p>}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-slate-900 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 group"
+            >
+              Enter App
+              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+          </form>
+
+          <p className="text-center text-xs text-slate-300 mt-8">Ver 2.0.0 • Protected System</p>
+        </div>
       </div>
     );
   }
@@ -206,11 +206,11 @@ const App = () => {
               Precision TNB Bill Calculator & Intelligent Solar System Planner for Malaysia.
             </p>
           </div>
-          
+
           <div className="flex items-center gap-4">
             {/* Install App Button (Visible only if PWA installable) */}
             {showInstallBtn && (
-              <button 
+              <button
                 onClick={handleInstallClick}
                 className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all border border-white/20 animate-pulse"
               >
@@ -240,44 +240,40 @@ const App = () => {
         <div className="max-w-7xl mx-auto mt-8 grid grid-cols-2 md:flex md:gap-2 relative z-10">
           <button
             onClick={() => setActiveTab('calculator')}
-            className={`flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-t-xl font-bold transition-all text-sm md:text-base ${
-              activeTab === 'calculator' 
-                ? 'bg-slate-50 text-slate-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]' 
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
+            className={`flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-t-xl font-bold transition-all text-sm md:text-base ${activeTab === 'calculator'
+              ? 'bg-slate-50 text-slate-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]'
+              : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
           >
             <Calculator size={18} className="shrink-0" />
             <span>Calculator</span>
           </button>
           <button
             onClick={() => setActiveTab('planner')}
-            className={`flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-t-xl font-bold transition-all text-sm md:text-base ${
-              activeTab === 'planner' 
-                ? 'bg-slate-50 text-slate-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]' 
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
+            className={`flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-t-xl font-bold transition-all text-sm md:text-base ${activeTab === 'planner'
+              ? 'bg-slate-50 text-slate-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]'
+              : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
           >
             <LayoutGrid size={18} className="shrink-0" />
             <span>Recommender</span>
           </button>
           <button
             onClick={() => setActiveTab('graphs')}
-            className={`flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-t-xl font-bold transition-all text-sm md:text-base ${
-              activeTab === 'graphs' 
-                ? 'bg-slate-50 text-slate-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]' 
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
+            className={`flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-t-xl font-bold transition-all text-sm md:text-base ${activeTab === 'graphs'
+              ? 'bg-slate-50 text-slate-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]'
+              : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
           >
             <BarChart2 size={18} className="shrink-0" />
             <span>Graph</span>
           </button>
           <button
             onClick={() => setActiveTab('daily')}
-            className={`flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-t-xl font-bold transition-all text-sm md:text-base ${
-              activeTab === 'daily' 
-                ? 'bg-slate-50 text-slate-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]' 
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
+            className={`flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-t-xl font-bold transition-all text-sm md:text-base ${activeTab === 'daily'
+              ? 'bg-slate-50 text-slate-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]'
+              : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
           >
             <Activity size={18} className="shrink-0" />
             <span>Illustration</span>
@@ -287,7 +283,7 @@ const App = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 md:px-8 -mt-6 relative z-20">
-        
+
         {activeTab === 'calculator' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-300">
             {/* Left Column: Inputs */}
@@ -297,16 +293,16 @@ const App = () => {
                   <Zap className="text-blue-600" size={20} />
                   Configuration
                 </h2>
-                
+
                 <div className="space-y-6">
                   {/* Bill & Usage Sync Section */}
                   <div className="space-y-4">
                     <div className="flex flex-col gap-2">
-                       <InputNumber
+                      <InputNumber
                         label="Avg. Monthly Bill"
                         value={billAmount}
                         onChange={handleBillChange}
-                        icon={<DollarSign size={16}/>}
+                        icon={<DollarSign size={16} />}
                         unit=" RM"
                       />
                       {gapWarning && (
@@ -315,7 +311,7 @@ const App = () => {
                           <div className="flex-1">
                             <p className="font-bold mb-0.5">Tariff Blind Spot</p>
                             <button onClick={fixBillAmount} className="mt-1 text-blue-600 font-bold hover:underline hover:text-blue-700 flex items-center gap-1 transition-colors">
-                                Round up <RefreshCw size={10}/>
+                              Round up <RefreshCw size={10} />
                             </button>
                           </div>
                         </div>
@@ -334,15 +330,26 @@ const App = () => {
                     />
                   </div>
 
-                  <InputSlider
-                    label="Daytime Usage"
-                    value={daytimePercent}
-                    min={0}
-                    max={100}
-                    unit="%"
-                    onChange={setDaytimePercent}
-                    icon={<Sun size={16} />}
-                  />
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <InputSlider
+                        label="Daytime Usage"
+                        value={daytimePercent}
+                        min={0}
+                        max={100}
+                        unit="%"
+                        onChange={setDaytimePercent}
+                        icon={<Sun size={16} />}
+                      />
+                    </div>
+                    <button
+                      onClick={() => setDaytimePercent(30)}
+                      className="mt-6 p-2 hover:bg-slate-100 rounded-lg transition-colors group"
+                      title="Reset to 30%"
+                    >
+                      <RefreshCw size={16} className="text-slate-400 group-hover:text-blue-600 group-hover:rotate-180 transition-all duration-300" />
+                    </button>
+                  </div>
 
                   <div className="pt-4 border-t border-slate-100">
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">System Size</div>
@@ -367,22 +374,49 @@ const App = () => {
                         helperText="Effective capacity ~12.87kWh (10% conservative loss)"
                       />
                     </div>
+
+                    {/* System Price Display */}
+                    {(() => {
+                      const costs = calculateSystemCost(panelCount, batteryCount);
+                      if (costs) {
+                        return (
+                          <div className="mt-4 pt-4 border-t border-slate-200">
+                            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">System Pricing</div>
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center text-sm">
+                                <span className="text-slate-600">Inverter Size</span>
+                                <span className="font-bold text-slate-800">{costs.tier.inverterSize}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-sm">
+                                <span className="text-slate-600">Cash Price</span>
+                                <span className="font-bold text-emerald-600">RM {costs.cash.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-sm">
+                                <span className="text-slate-600">CC Price</span>
+                                <span className="font-bold text-blue-600">RM {costs.cc.toLocaleString()}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 </div>
               </div>
 
               {/* Estimated Monthly Savings (Duplicate Display) */}
               <div className="bg-emerald-500 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">
-                 <div className="absolute top-0 right-0 p-4 opacity-10">
-                   <TrendingUp size={64} />
-                 </div>
-                 <div className="relative z-10">
-                   <h3 className="font-bold text-emerald-100 uppercase text-xs tracking-wider mb-2">Est. Monthly Savings</h3>
-                   <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold">RM {simulation.monthlySavings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      <span className="text-sm font-medium text-emerald-100 opacity-80">({Math.round(savingsPercent)}%)</span>
-                   </div>
-                 </div>
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <TrendingUp size={64} />
+                </div>
+                <div className="relative z-10">
+                  <h3 className="font-bold text-emerald-100 uppercase text-xs tracking-wider mb-2">Est. Monthly Savings</h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold">RM {simulation.monthlySavings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="text-sm font-medium text-emerald-100 opacity-80">({Math.round(savingsPercent)}%)</span>
+                  </div>
+                </div>
               </div>
 
               {/* Quick Stats */}
@@ -401,7 +435,7 @@ const App = () => {
                     <div className="text-xl font-bold opacity-90">{Math.round(simulation.demandDay).toLocaleString()}</div>
                     <div className="text-blue-200 text-xs">Daytime Demand (kWh)</div>
                   </div>
-                   <div>
+                  <div>
                     <div className="text-xl font-bold opacity-90">{Math.round(simulation.demandNight).toLocaleString()}</div>
                     <div className="text-blue-200 text-xs">Nighttime Demand (kWh)</div>
                   </div>
@@ -411,20 +445,20 @@ const App = () => {
 
             {/* Right Column: Results */}
             <div className="lg:col-span-8 space-y-6">
-              
+
               {/* Charts Section */}
               <EnergyChart simulation={simulation} />
 
               {/* Detailed Bill Breakdown */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <BillDetails 
-                  data={simulation.originalBill} 
-                  title="Original Utility Bill" 
+                <BillDetails
+                  data={simulation.originalBill}
+                  title="Original Utility Bill"
                 />
-                <BillDetails 
-                  data={simulation.newBill} 
-                  title="Projected Bill with Solar" 
-                  isProjected 
+                <BillDetails
+                  data={simulation.newBill}
+                  title="Projected Bill with Solar"
+                  isProjected
                 />
               </div>
 
