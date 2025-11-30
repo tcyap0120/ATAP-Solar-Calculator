@@ -1,16 +1,15 @@
-
 {
   "short_name": "SolarTC",
   "name": "Solar Calculator by TC",
   "description": "Malaysia's TNB electricity bill calculator and solar planner.",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/4344/4344932.png",
+      "src": "icon.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/4344/4344932.png",
+      "src": "icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
