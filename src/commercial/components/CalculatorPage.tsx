@@ -547,11 +547,13 @@ const CalculatorPage: React.FC = () => {
     const requiredPanelsA = Math.ceil(requiredKwpA / settings.panelRating);
     const finalPanelsA = Math.min(requiredPanelsA, absoluteMaxPanelsA);
     const planACandidate = calcPlanDetails(finalPanelsA * settings.panelRating);
-    // If one fewer panel achieves the same rounded monthly savings, prefer the cheaper option
-    const planALower = finalPanelsA > 1 ? calcPlanDetails((finalPanelsA - 1) * settings.panelRating) : null;
-    const planA = (planALower && Math.round(planALower.estOffset) >= Math.round(planACandidate.estOffset))
-        ? planALower
-        : planACandidate;
+    // Walk backwards to find the minimum panels that achieve the same rounded savings
+    const peakSavings = Math.round(planACandidate.estOffset);
+    let minPanelsA = finalPanelsA;
+    while (minPanelsA > 1 && Math.round(calcPlanDetails((minPanelsA - 1) * settings.panelRating).estOffset) >= peakSavings) {
+        minPanelsA--;
+    }
+    const planA = minPanelsA < finalPanelsA ? calcPlanDetails(minPanelsA * settings.panelRating) : planACandidate;
 
     // PLAN B: DAYTIME COVERAGE
     const safeActiveDays = activeDays > 0 ? activeDays : 1;
