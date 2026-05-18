@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { simulateSolar, calculateBill, getKwhFromBill, calculateSystemCost } from './utils/billingEngine';
 import { InputSlider } from './components/InputSlider';
 import { InputNumber } from './components/InputNumber';
@@ -8,7 +8,12 @@ import { EnergyChart } from './components/EnergyChart';
 import { PlanRecommender } from './components/PlanRecommender';
 import { SavingsGraphGenerator } from './components/SavingsGraphGenerator';
 import { DailyFlowDiagram } from './components/DailyFlowDiagram';
-import { Zap, Sun, Battery, Clock, DollarSign, Leaf, Calculator, LayoutGrid, BarChart2, Activity, TrendingUp, AlertTriangle, RefreshCw, Download, Lock, ArrowRight } from 'lucide-react';
+import { DocForm } from './components/DocForm';
+import { ForecastTable } from './components/ForecastTable';
+import { BATTERY_COST_CASH, PANEL_WATTAGE, BATTERY_CAPACITY_KWH, APRIL_PROMO_BATTERY_UNIT_DISCOUNT } from './constants';
+import { Zap, Sun, Battery, DollarSign, Leaf, Calculator, LayoutGrid, BarChart2, Activity, TrendingUp, AlertTriangle, RefreshCw, Download, Lock, ArrowRight, Home, FileText, Table, Menu, X, Building2 } from 'lucide-react';
+
+const CommercialSolarShell = lazy(() => import('./commercial/CommercialSolarShell'));
 
 const App = () => {
   // Authentication State
@@ -17,9 +22,10 @@ const App = () => {
   const [authError, setAuthError] = useState(false);
 
   // Navigation State with Persistence
-  const [activeTab, setActiveTab] = useState<'calculator' | 'planner' | 'graphs' | 'daily'>(() => {
+  const [activeTab, setActiveTab] = useState<'calculator' | 'planner' | 'graphs' | 'daily' | 'forms' | 'forecast' | 'commercial'>(() => {
     const saved = localStorage.getItem('solar_activeTab');
-    return (saved === 'calculator' || saved === 'planner' || saved === 'graphs' || saved === 'daily') ? saved : 'calculator';
+    const ok = saved === 'calculator' || saved === 'planner' || saved === 'graphs' || saved === 'daily' || saved === 'forms' || saved === 'forecast' || saved === 'commercial';
+    return ok ? saved : 'planner';
   });
 
   useEffect(() => {
@@ -27,12 +33,14 @@ const App = () => {
   }, [activeTab]);
 
   // State for user inputs (Calculator)
-  const [usageKwh, setUsageKwh] = useState<number | ''>(1200);
-  // Initialize bill amount based on default usage
-  const [billAmount, setBillAmount] = useState<number | ''>(() => {
-    const res = calculateBill(1200);
-    return parseFloat(res.finalTotal.toFixed(2));
+  // Defaulting to RM 1000 Bill
+  const DEFAULT_BILL = 1000;
+
+  const [usageKwh, setUsageKwh] = useState<number | ''>(() => {
+    return getKwhFromBill(DEFAULT_BILL);
   });
+
+  const [billAmount, setBillAmount] = useState<number | ''>(DEFAULT_BILL);
 
   const [daytimePercent, setDaytimePercent] = useState<number>(30); // Default 30%
   const [panelCount, setPanelCount] = useState<number>(12);
@@ -49,6 +57,17 @@ const App = () => {
   // Tariff Blind Spot Bounds
   const billGapLower = useMemo(() => calculateBill(1500).finalTotal, []);
   const billGapUpper = useMemo(() => calculateBill(1501).finalTotal, []);
+
+  // Mobile Menu State
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const [aprilLaunchingPromo, setAprilLaunchingPromo] = useState(false);
+  const [upgradeAutoBackupBox, setUpgradeAutoBackupBox] = useState(false);
+
+  const handleAprilLaunchingPromoChange = (value: boolean) => {
+    setAprilLaunchingPromo(value);
+    if (!value) setUpgradeAutoBackupBox(false);
+  };
 
   // Check for stored auth session
   useEffect(() => {
@@ -108,7 +127,6 @@ const App = () => {
     setBillAmount(val);
     if (typeof val === 'number' && val > billGapLower && val < billGapUpper) {
       setGapWarning(true);
-      // Auto fix usage to valid upper bound if typing in blind spot
       if (!isSyncing) setUsageKwh(1501);
     } else {
       setGapWarning(false);
@@ -129,18 +147,67 @@ const App = () => {
     setUsageKwh(1501);
   };
 
-  // Derived state (Simulation Result)
   const simulation = useMemo(() => {
     const safeUsage = typeof usageKwh === 'number' ? usageKwh : 0;
     return simulateSolar(safeUsage, daytimePercent, panelCount, batteryCount);
   }, [usageKwh, daytimePercent, panelCount, batteryCount]);
 
-  // Derived calculations for UI displays
+  // System Cost Calculation for Calculator Tab
+  const systemCost = useMemo(() => {
+    // Single-phase sheet runs to 21 panels; above that use three-phase tier pricing.
+    const estimatedPhase = panelCount > 21 ? 'three' : 'single';
+    return calculateSystemCost(panelCount, batteryCount, estimatedPhase, {
+      aprilLaunchingPromo,
+      backupBoxUpgrade: upgradeAutoBackupBox
+    });
+  }, [panelCount, batteryCount, aprilLaunchingPromo, upgradeAutoBackupBox]);
+
   const savingsPercent = simulation.originalBill.finalTotal > 0
     ? (simulation.monthlySavings / simulation.originalBill.finalTotal) * 100
     : 0;
 
-  const totalKwp = (panelCount * 0.62).toFixed(2);
+  const totalKwp = (panelCount * (PANEL_WATTAGE / 1000)).toFixed(2);
+
+  // Check for Export > Import (Oversized)
+  const isExportOversized = (simulation.newBill.exportUnits || 0) > simulation.gridImport;
+
+  // Navigation Items Config
+  const navItems = [
+    { id: 'planner', label: 'Recommender', icon: LayoutGrid },
+    { id: 'calculator', label: 'Calculator', icon: Calculator },
+    { id: 'graphs', label: 'Graph', icon: BarChart2 },
+    { id: 'forecast', label: 'Forecast', icon: Table },
+    { id: 'daily', label: 'Illustration', icon: Activity },
+    { id: 'forms', label: 'Forms', icon: FileText },
+  ] as const;
+
+  // --- COMMERCIAL SOLAR (separate app shell; does not share residential state) ---
+  if (isAuthenticated && activeTab === 'commercial') {
+    return (
+      <div className="min-h-screen bg-slate-50 relative [--atap-commercial-header-h:3.5rem]">
+        <div className="sticky top-0 z-[100] flex min-h-[3.5rem] shrink-0 items-center gap-2 border-b border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur-sm md:px-6">
+          <button
+            type="button"
+            onClick={() => setActiveTab('planner')}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-300 hover:text-blue-700"
+          >
+            <ArrowRight size={16} className="rotate-180" />
+            Back to Residential Solar
+          </button>
+          <span className="text-xs font-medium text-slate-500 md:text-sm">Commercial Solar Calculator</span>
+        </div>
+        <Suspense
+          fallback={
+            <div className="flex min-h-[50vh] items-center justify-center p-8 text-slate-500">
+              Loading commercial calculator…
+            </div>
+          }
+        >
+          <CommercialSolarShell />
+        </Suspense>
+      </div>
+    );
+  }
 
   // --- RENDER WELCOME SCREEN IF NOT AUTHENTICATED ---
   if (!isAuthenticated) {
@@ -155,7 +222,7 @@ const App = () => {
             </div>
           </div>
 
-          <h1 className="text-2xl font-bold text-center text-slate-800 mb-2">Solar Calculator by TC</h1>
+          <h1 className="text-2xl font-bold text-center text-slate-800 mb-2">ATAP Solar Calculator</h1>
           <p className="text-center text-slate-500 mb-8 text-sm">Welcome back. Please enter your access code to continue.</p>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -190,102 +257,149 @@ const App = () => {
 
   // --- MAIN APP ---
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      {/* Header */}
-      <header className="bg-slate-900 text-white pt-8 pb-24 px-4 md:px-8 shadow-lg relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full bg-[url('https://images.unsplash.com/photo-1509391366360-2e959784a276?q=80&w=3264&auto=format&fit=crop')] bg-cover bg-center opacity-10"></div>
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 relative z-10">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="bg-yellow-400 p-1.5 rounded-lg text-slate-900">
-                <Sun size={24} strokeWidth={2.5} />
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight">Solar Calculator by TC</h1>
+    <div className="flex min-h-screen bg-slate-50">
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar Navigation (Desktop & Mobile) */}
+      <aside className={`w-64 bg-slate-900 text-white flex-col fixed inset-y-0 left-0 z-50 shadow-xl transition-transform duration-300 md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 border-b border-slate-800 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="bg-yellow-400 p-1.5 rounded-lg text-slate-900">
+              <Sun size={20} strokeWidth={2.5} />
             </div>
-            <p className="text-slate-300 text-sm max-w-md leading-relaxed">
-              Precision TNB Bill Calculator & Intelligent Solar System Planner for Malaysia.
-            </p>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight leading-none">ATAP Solar Calculator</h1>
+              <p className="text-[10px] text-slate-400 font-medium mt-0.5 opacity-80">by TC Yap</p>
+            </div>
           </div>
-
-          <div className="flex items-center gap-4">
-            {/* Install App Button (Visible only if PWA installable) */}
-            {showInstallBtn && (
-              <button
-                onClick={handleInstallClick}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all border border-white/20 animate-pulse"
-              >
-                <Download size={16} />
-                Install App
-              </button>
-            )}
-
-            {/* Global Savings Stat (Only relevant if looking at calculator, but nice to have) */}
-            {activeTab === 'calculator' && (
-              <div className="hidden md:block text-right animate-in fade-in slide-in-from-right-4 duration-500">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Est. Monthly Savings</div>
-                <div className="flex flex-col items-end">
-                  <div className="text-3xl font-bold text-emerald-400">
-                    RM {simulation.monthlySavings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
-                  <div className="text-sm font-medium text-emerald-200">
-                    Save {Math.round(savingsPercent)}%
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Close Button (Mobile Only) */}
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="md:hidden text-slate-400 hover:text-white"
+          >
+            <X size={20} />
+          </button>
         </div>
 
-        {/* Tab Navigation - Grid on mobile, Flex on desktop */}
-        <div className="max-w-7xl mx-auto mt-8 grid grid-cols-2 md:flex md:gap-2 relative z-10">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id);
+                setIsMobileMenuOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeTab === item.id
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
+                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+            >
+              <item.icon size={20} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+          <div className="my-3 border-t border-slate-800/80" />
           <button
-            onClick={() => setActiveTab('calculator')}
-            className={`flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-t-xl font-bold transition-all text-sm md:text-base ${activeTab === 'calculator'
-              ? 'bg-slate-50 text-slate-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]'
-              : 'bg-white/10 text-white hover:bg-white/20'
+            type="button"
+            onClick={() => {
+              setActiveTab('commercial');
+              setIsMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeTab === 'commercial'
+              ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/40'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
               }`}
           >
-            <Calculator size={18} className="shrink-0" />
-            <span>Calculator</span>
+            <Building2 size={20} />
+            <span>Commercial Solar</span>
           </button>
-          <button
-            onClick={() => setActiveTab('planner')}
-            className={`flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-t-xl font-bold transition-all text-sm md:text-base ${activeTab === 'planner'
-              ? 'bg-slate-50 text-slate-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]'
-              : 'bg-white/10 text-white hover:bg-white/20'
-              }`}
-          >
-            <LayoutGrid size={18} className="shrink-0" />
-            <span>Recommender</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('graphs')}
-            className={`flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-t-xl font-bold transition-all text-sm md:text-base ${activeTab === 'graphs'
-              ? 'bg-slate-50 text-slate-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]'
-              : 'bg-white/10 text-white hover:bg-white/20'
-              }`}
-          >
-            <BarChart2 size={18} className="shrink-0" />
-            <span>Graph</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('daily')}
-            className={`flex items-center justify-center gap-2 px-4 md:px-6 py-3 rounded-t-xl font-bold transition-all text-sm md:text-base ${activeTab === 'daily'
-              ? 'bg-slate-50 text-slate-900 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]'
-              : 'bg-white/10 text-white hover:bg-white/20'
-              }`}
-          >
-            <Activity size={18} className="shrink-0" />
-            <span>Illustration</span>
-          </button>
+        </nav>
+
+        <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-3">
+          <div className="space-y-2">
+            <label className="flex items-start gap-2 cursor-pointer text-left rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100/95">
+              <input
+                type="checkbox"
+                checked={aprilLaunchingPromo}
+                onChange={e => handleAprilLaunchingPromoChange(e.target.checked)}
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-amber-400/60 text-amber-500 focus:ring-amber-500"
+              />
+              <span className="leading-snug">
+                <span className="font-bold text-amber-50">April Launching Promo</span>
+                <span className="block text-amber-200/80 mt-0.5">No battery: −RM800 single / −RM1600 3-phase on system. With 1+ batteries: −RM1800 / −RM3000 on system; −RM800 per battery (cash &amp; CC).</span>
+              </span>
+            </label>
+            {aprilLaunchingPromo && (
+              <label className="ml-5 flex items-start gap-2 cursor-pointer rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-100/90">
+                <input
+                  type="checkbox"
+                  checked={upgradeAutoBackupBox}
+                  onChange={e => setUpgradeAutoBackupBox(e.target.checked)}
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-amber-400/60 text-amber-500 focus:ring-amber-500"
+                />
+                <span className="leading-snug">
+                  <span className="font-semibold text-amber-50">Upgrade to Auto BackupBox</span>
+                  <span className="block text-amber-200/75 mt-0.5">
+                    Only with 1+ battery: +RM800 single-phase / +RM1500 three-phase on system cash &amp; CC (not on
+                    battery).
+                  </span>
+                </span>
+              </label>
+            )}
+          </div>
+          {showInstallBtn && (
+            <button
+              onClick={handleInstallClick}
+              className="w-full mb-4 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-bold transition-all"
+            >
+              <Download size={16} />
+              Install App
+            </button>
+          )}
+          <p className="text-xs text-slate-500 text-center">Updated: {__BUILD_DATE__}</p>
         </div>
-      </header>
+      </aside>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 md:px-8 -mt-6 relative z-20">
 
-        {activeTab === 'calculator' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-300">
+
+      {/* Main Content Area */}
+      <main className="flex-1 md:ml-64 p-4 pb-24 md:p-8 md:pb-8 overflow-x-hidden">
+        {/* Mobile Header */}
+        <div className="md:hidden mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 shadow-sm active:scale-95 transition-transform"
+            >
+              <Menu size={20} />
+            </button>
+            <div className="bg-yellow-400 p-1.5 rounded-lg text-slate-900 shadow-sm">
+              <Sun size={20} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-slate-800 leading-none">ATAP Solar</h1>
+              <p className="text-[10px] text-slate-500 font-medium">Calculator</p>
+            </div>
+          </div>
+          {showInstallBtn && (
+            <button onClick={handleInstallClick} className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+              <Download size={20} />
+            </button>
+          )}
+        </div>
+
+        {/* Dynamic Content - Persisted state using CSS visibility */}
+
+        {/* Calculator Tab */}
+        <div className={activeTab === 'calculator' ? 'block animate-in fade-in duration-300' : 'hidden'}>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Left Column: Inputs */}
             <div className="lg:col-span-4 space-y-4">
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
@@ -344,10 +458,10 @@ const App = () => {
                     </div>
                     <button
                       onClick={() => setDaytimePercent(30)}
-                      className="mt-6 p-2 hover:bg-slate-100 rounded-lg transition-colors group"
+                      className="p-3 bg-white border border-slate-200 shadow-sm rounded-xl hover:bg-slate-50 transition-colors group h-fit self-center"
                       title="Reset to 30%"
                     >
-                      <RefreshCw size={16} className="text-slate-400 group-hover:text-blue-600 group-hover:rotate-180 transition-all duration-300" />
+                      <RefreshCw size={18} className="text-slate-400 group-hover:text-blue-600 group-hover:rotate-180 transition-all duration-300" />
                     </button>
                   </div>
 
@@ -355,7 +469,7 @@ const App = () => {
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">System Size</div>
                     <div className="space-y-6">
                       <InputNumber
-                        label="Solar Panels (620W)"
+                        label="Solar Panels (640W)"
                         value={panelCount}
                         min={0}
                         max={500}
@@ -365,47 +479,103 @@ const App = () => {
                       />
 
                       <InputNumber
-                        label="Batteries (14kWh)"
+                        label="Batteries (16 kWh)"
                         value={batteryCount}
                         min={0}
                         max={100}
                         onChange={(val) => setBatteryCount(Number(val))}
                         icon={<Battery size={16} />}
-                        helperText="Effective capacity ~12.87kWh (10% conservative loss)"
+                        helperText={`Usable discharge ~${BATTERY_CAPACITY_KWH.toFixed(2)} kWh/day per unit (90% of 16 kWh nominal)`}
                       />
                     </div>
+                  </div>
 
-                    {/* System Price Display */}
-                    {(() => {
-                      const costs = calculateSystemCost(panelCount, batteryCount);
-                      if (costs) {
-                        return (
-                          <div className="mt-4 pt-4 border-t border-slate-200">
-                            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">System Pricing</div>
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center text-sm">
-                                <span className="text-slate-600">Inverter Size</span>
-                                <span className="font-bold text-slate-800">{costs.tier.inverterSize}</span>
-                              </div>
-                              <div className="flex justify-between items-center text-sm">
-                                <span className="text-slate-600">Cash Price</span>
-                                <span className="font-bold text-emerald-600">RM {costs.cash.toLocaleString()}</span>
-                              </div>
-                              <div className="flex justify-between items-center text-sm">
-                                <span className="text-slate-600">CC Price</span>
-                                <span className="font-bold text-blue-600">RM {costs.cc.toLocaleString()}</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
+                  <div className="space-y-2">
+                    <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
+                      <input
+                        type="checkbox"
+                        checked={aprilLaunchingPromo}
+                        onChange={e => handleAprilLaunchingPromoChange(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+                      />
+                      <span>
+                        <span className="font-bold">April Launching Promo</span>
+                        <span className="block text-xs text-amber-800/90 mt-0.5">
+                          No battery: single −RM800 / three-phase −RM1600 on system. With 1+ batteries: single −RM1800; three-phase −RM3000; −RM800 per battery (cash &amp; CC).
+                        </span>
+                      </span>
+                    </label>
+                    {aprilLaunchingPromo && (
+                      <label className="ml-2 flex items-start gap-3 cursor-pointer rounded-xl border border-amber-200/80 bg-amber-50/50 px-4 py-3 text-sm text-amber-950">
+                        <input
+                          type="checkbox"
+                          checked={upgradeAutoBackupBox}
+                          onChange={e => setUpgradeAutoBackupBox(e.target.checked)}
+                          className="mt-0.5 h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+                        />
+                        <span>
+                          <span className="font-bold">Upgrade to Auto BackupBox</span>
+                          <span className="block text-xs text-amber-800/90 mt-0.5">
+                            Only when ordering 1+ battery: +RM800 (single-phase) or +RM1500 (three-phase) on system cash
+                            &amp; CC (not on battery).
+                          </span>
+                        </span>
+                      </label>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Estimated Monthly Savings (Duplicate Display) */}
+              {/* System Price Est. */}
+              {systemCost && (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                  <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <DollarSign className="text-emerald-600" size={20} />
+                    Est. System Price
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 text-sm">Credit Card Price</span>
+                      <span className="font-bold text-slate-900 text-lg">RM {systemCost.cc.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 text-sm">Cash Price</span>
+                      <span className="font-bold text-emerald-600 text-lg">RM {systemCost.cash.toLocaleString()}</span>
+                    </div>
+                    {typeof systemCost.backupBoxUpgradeRM === 'number' && systemCost.backupBoxUpgradeRM > 0 && (
+                      <div className="flex justify-between items-center text-xs text-slate-600 bg-slate-50 rounded-lg px-2 py-1.5">
+                        <span>Auto BackupBox upgrade</span>
+                        <span className="font-semibold">+RM {systemCost.backupBoxUpgradeRM.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {typeof systemCost.aprilPromoDiscount === 'number' && systemCost.aprilPromoDiscount > 0 && (
+                      <div className="flex justify-between items-center text-xs text-amber-800 bg-amber-50 rounded-lg px-2 py-1.5">
+                        <span>April Launching Promo</span>
+                        <span className="font-semibold">−RM {systemCost.aprilPromoDiscount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="text-[10px] text-slate-400 pt-2 border-t border-slate-50 text-center">
+                      Based on {panelCount > 21 ? '3-Phase' : 'Single Phase'} Inverter
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Oversized Warning */}
+              {isExportOversized && (
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex gap-3 text-red-800 animate-in slide-in-from-top-2">
+                  <AlertTriangle size={20} className="text-red-500 shrink-0" />
+                  <div>
+                    <p className="font-bold text-sm mb-1">System Oversized Warning</p>
+                    <p className="text-xs opacity-90 leading-relaxed">
+                      New Export ({(simulation.newBill.exportUnits || 0).toLocaleString()} kWh) is higher than New Import ({simulation.gridImport.toLocaleString()} kWh).
+                      This configuration is not ideal for maximizing ROI. Consider reducing panel count or adding batteries.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Estimated Monthly Savings */}
               <div className="bg-emerald-500 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-10">
                   <TrendingUp size={64} />
@@ -473,25 +643,63 @@ const App = () => {
                   </p>
                   <ul className="list-disc list-outside pl-4 space-y-1 text-xs opacity-90">
                     <li>Solar generation calculated based on <strong>3.5 peak sun hours</strong>/day.</li>
-                    <li>Export credit calculated using average SMP of <strong>RM 0.20/kWh</strong>.</li>
+                    <li>
+                      <strong>Export Credit:</strong> RM0.2703/kWh if new import ≤1500 kWh, or RM0.3703/kWh if new import &gt;1500 kWh.
+                    </li>
                   </ul>
                 </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
 
-        {activeTab === 'planner' && (
-          <PlanRecommender initialUsage={typeof usageKwh === 'number' ? usageKwh : 0} />
-        )}
+        {/* Other Tabs */}
+        <div className={activeTab === 'planner' ? 'block' : 'hidden'}>
+          <PlanRecommender
+            initialUsage={typeof usageKwh === 'number' ? usageKwh : 0}
+            aprilLaunchingPromo={aprilLaunchingPromo}
+            onAprilLaunchingPromoChange={handleAprilLaunchingPromoChange}
+            upgradeAutoBackupBox={upgradeAutoBackupBox}
+            onUpgradeAutoBackupBoxChange={setUpgradeAutoBackupBox}
+          />
+        </div>
 
-        {activeTab === 'graphs' && (
+        <div className={activeTab === 'graphs' ? 'block' : 'hidden'}>
           <SavingsGraphGenerator initialUsage={typeof usageKwh === 'number' ? usageKwh : 0} />
-        )}
+        </div>
 
-        {activeTab === 'daily' && (
+        <div className={activeTab === 'forecast' ? 'block' : 'hidden'}>
+          <ForecastTable
+            initialUsage={typeof usageKwh === 'number' ? usageKwh : 0}
+            aprilLaunchingPromo={aprilLaunchingPromo}
+            upgradeAutoBackupBox={upgradeAutoBackupBox}
+          />
+        </div>
+
+        <div className={activeTab === 'daily' ? 'block' : 'hidden'}>
           <DailyFlowDiagram initialUsage={typeof usageKwh === 'number' ? usageKwh : 0} />
-        )}
+        </div>
+
+        {/* DocForm - Rendered hidden when not active to preserve state */}
+        <div className={activeTab === 'forms' ? 'block' : 'hidden'}>
+          <DocForm
+            aprilLaunchingPromo={aprilLaunchingPromo}
+            upgradeAutoBackupBox={upgradeAutoBackupBox}
+            initialData={{
+              systemSize: Number(totalKwp),
+              panelCount: panelCount,
+              inverterSize: systemCost?.inverterSize,
+              systemPrice: systemCost?.cash,
+              systemCCPrice: systemCost?.cc,
+              batteryCount: batteryCount,
+              batteryCash:
+                batteryCount *
+                (aprilLaunchingPromo ? BATTERY_COST_CASH - APRIL_PROMO_BATTERY_UNIT_DISCOUNT : BATTERY_COST_CASH),
+              annualGen: simulation.solarGenerationMonthly * 12,
+              monthlyGen: simulation.solarGenerationMonthly
+            }}
+          />
+        </div>
 
       </main>
     </div>

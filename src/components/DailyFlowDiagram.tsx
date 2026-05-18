@@ -139,6 +139,13 @@ export const DailyFlowDiagram: React.FC<DailyFlowDiagramProps> = ({ initialUsage
 
   }, [usageKwh, daytimePercent, panelCount, batteryCount]);
 
+  // Calculate Projected Bill
+  const projectedBill = useMemo(() => {
+    const totalImport = (dailyStats.gridToHomeDay + dailyStats.gridToHomeNight) * 30;
+    const totalExport = dailyStats.solarToGrid * 30;
+    return calculateBill(totalImport, totalExport).finalTotal;
+  }, [dailyStats]);
+
   const FlowArrow = ({ val, color, label }: { val: number, color: string, label?: string }) => {
     if (val <= 0.01) return <div className="hidden"></div>;
     return (
@@ -164,7 +171,7 @@ export const DailyFlowDiagram: React.FC<DailyFlowDiagramProps> = ({ initialUsage
   };
 
   const NodeCard = ({ icon, title, value, color, subtext }: any) => (
-    <div className={`flex flex-col items-center justify-center p-4 bg-white border ${color} rounded-xl shadow-sm z-10 w-28 md:w-32 h-28 md:h-32 text-center`}>
+    <div className={`flex flex-col items-center justify-center p-4 bg-white border ${color} rounded-xl shadow-sm z-10 w-28 md:w-32 h-28 md:h-32 text-center shrink-0`}>
       <div className="mb-2">{icon}</div>
       <div className="font-bold text-slate-800 text-sm leading-tight">{title}</div>
       <div className="font-mono font-bold text-lg">{value.toFixed(1)} <span className="text-[10px] font-sans font-normal text-slate-400">kWh</span></div>
@@ -229,172 +236,177 @@ export const DailyFlowDiagram: React.FC<DailyFlowDiagramProps> = ({ initialUsage
               value={panelCount} 
               onChange={val => setPanelCount(Number(val))} 
               icon={<Sun size={16}/>} 
-              helperText={`${(panelCount * 0.62).toFixed(2)} kWp`} 
+              helperText={`${(panelCount * (PANEL_WATTAGE / 1000)).toFixed(2)} kWp`} 
            />
            <InputNumber 
               label="Batteries" 
               value={batteryCount} 
               onChange={val => setBatteryCount(Number(val))} 
               icon={<Battery size={16}/>} 
-              helperText={`${(batteryCount * 14.3).toFixed(1)}kWh (conservatively calculate 10% loss as ${(batteryCount * 12.87).toFixed(1)}kWh)`} 
+              helperText={`${(batteryCount * 16).toFixed(1)} kWh nominal (usable ~${(batteryCount * BATTERY_CAPACITY_KWH).toFixed(1)} kWh/day)`} 
            />
         </div>
       </div>
 
       {/* --- DAYTIME FLOW DIAGRAM --- */}
-      <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-inner">
+      <div className="py-2">
          <div className="flex items-center gap-2 mb-8 justify-center">
             <Sun className="text-amber-500 fill-amber-500" size={32} />
             <h3 className="text-2xl font-bold text-slate-800">Daytime Flow</h3>
          </div>
 
-         <div className="relative max-w-4xl mx-auto h-[400px] md:h-[300px]">
-            {/* Grid Container */}
-            <div className="grid grid-cols-3 h-full items-center justify-items-center gap-4">
-              
-              {/* Left: Source (Solar) */}
-              <div className="row-span-3">
-                 <NodeCard 
-                   icon={<Sun size={32} className="text-amber-500" />} 
-                   title="Solar Panels" 
-                   value={dailyStats.dailySolarGen} 
-                   color="border-amber-200 ring-4 ring-amber-50"
-                   subtext="Total Generation"
-                 />
-              </div>
+         {/* Scrollable Container for Diagram */}
+         <div className="overflow-x-auto pb-4">
+            <div className="relative min-w-[600px] max-w-4xl mx-auto">
+                {/* Grid Container */}
+                <div className="grid grid-cols-3 items-center justify-items-center gap-4">
+                  
+                  {/* Left: Source (Solar) */}
+                  <div className="">
+                    <NodeCard 
+                      icon={<Sun size={32} className="text-amber-500" />} 
+                      title="Solar Panels" 
+                      value={dailyStats.dailySolarGen} 
+                      color="border-amber-200 ring-4 ring-amber-50"
+                      subtext="Total Generation"
+                    />
+                  </div>
 
-              {/* Middle: Connections */}
-              <div className="flex flex-col h-full w-full justify-around py-8 relative">
-                 {/* Solar to Grid (Top) */}
-                 <div className="flex items-center w-full">
-                    <div className="flex-1 -rotate-12 transform origin-left translate-y-4">
-                      <FlowArrow val={dailyStats.solarToGrid} color="bg-blue-500" label="Export" />
-                    </div>
-                 </div>
-
-                 {/* Solar to Home (Middle) */}
-                 <div className="flex items-center w-full">
-                    <div className="flex-1">
-                      <FlowArrow val={dailyStats.solarToHome} color="bg-amber-500" label="Direct Use" />
-                    </div>
-                 </div>
-
-                 {/* Solar to Battery (Bottom) */}
-                 <div className="flex items-center w-full">
-                    <div className="flex-1 rotate-12 transform origin-left -translate-y-4">
-                      <FlowArrow val={dailyStats.solarToBattery} color="bg-emerald-500" label="Charge" />
-                    </div>
-                 </div>
-              </div>
-
-              {/* Right: Destinations */}
-              <div className="flex flex-col h-full justify-between w-full items-center py-2">
-                 {/* Grid */}
-                 <div className="relative">
-                   <NodeCard 
-                     icon={<Zap size={24} className="text-blue-500" />} 
-                     title="Grid Export" 
-                     value={dailyStats.solarToGrid} 
-                     color="border-blue-200"
-                   />
-                   {/* Grid Import Arrow (Day) - Special Case */}
-                   {dailyStats.gridToHomeDay > 0 && (
-                     <div className="absolute top-full left-1/2 -translate-x-1/2 h-16 w-0.5 bg-blue-300 border-l border-dashed border-blue-400">
-                        <div className="absolute top-1/2 left-4 w-24 -translate-y-1/2">
-                          <span className="text-[10px] text-blue-500 font-bold block">Import</span>
-                          <span className="text-xs font-mono font-bold">{dailyStats.gridToHomeDay.toFixed(1)} kWh</span>
+                  {/* Middle: Connections */}
+                  <div className="flex flex-col w-full justify-around py-8 relative px-4 h-full min-h-[400px]">
+                    {/* Solar to Grid (Top) */}
+                    <div className="flex items-center w-full">
+                        <div className="flex-1 -rotate-12 transform origin-left translate-y-4">
+                          <FlowArrow val={dailyStats.solarToGrid} color="bg-blue-500" label="Export" />
                         </div>
-                        <ArrowDown size={12} className="absolute bottom-0 -translate-x-1/2 text-blue-400" />
-                     </div>
-                   )}
-                 </div>
+                    </div>
 
-                 {/* Home */}
-                 <div className="relative z-20">
-                    <NodeCard 
-                      icon={<Home size={24} className="text-slate-600" />} 
-                      title="Home Load" 
-                      value={dailyStats.dayDemand} 
-                      color="border-slate-300 bg-slate-50"
-                      subtext="Daytime Usage"
-                    />
-                 </div>
+                    {/* Solar to Home (Middle) */}
+                    <div className="flex items-center w-full">
+                        <div className="flex-1">
+                          <FlowArrow val={dailyStats.solarToHome} color="bg-amber-500" label="Direct Use" />
+                        </div>
+                    </div>
 
-                 {/* Battery */}
-                 <div>
-                    <NodeCard 
-                      icon={<Battery size={24} className="text-emerald-500" />} 
-                      title="Battery" 
-                      value={dailyStats.solarToBattery} 
-                      color="border-emerald-200"
-                      subtext="Charged"
-                    />
-                 </div>
-              </div>
+                    {/* Solar to Battery (Bottom) */}
+                    <div className="flex items-center w-full">
+                        <div className="flex-1 rotate-12 transform origin-left -translate-y-4">
+                          <FlowArrow val={dailyStats.solarToBattery} color="bg-emerald-500" label="Charge" />
+                        </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Destinations */}
+                  <div className="flex flex-col w-full items-center gap-12 py-2">
+                    {/* Grid */}
+                    <div className="relative">
+                      <NodeCard 
+                        icon={<Zap size={24} className="text-blue-500" />} 
+                        title="Grid Export" 
+                        value={dailyStats.solarToGrid} 
+                        color="border-blue-200"
+                      />
+                      {/* Grid Import Arrow (Day) - Special Case */}
+                      {dailyStats.gridToHomeDay > 0 && (
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 h-16 w-0.5 bg-blue-300 border-l border-dashed border-blue-400">
+                            <div className="absolute top-1/2 left-4 w-24 -translate-y-1/2">
+                              <span className="text-[10px] text-blue-500 font-bold block">Import</span>
+                              <span className="text-xs font-mono font-bold">{dailyStats.gridToHomeDay.toFixed(1)} kWh</span>
+                            </div>
+                            <ArrowDown size={12} className="absolute bottom-0 -translate-x-1/2 text-blue-400" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Home */}
+                    <div className="relative z-20">
+                        <NodeCard 
+                          icon={<Home size={24} className="text-slate-600" />} 
+                          title="Home Load" 
+                          value={dailyStats.dayDemand} 
+                          color="border-slate-300 bg-slate-50"
+                          subtext="Daytime Usage"
+                        />
+                    </div>
+
+                    {/* Battery */}
+                    <div>
+                        <NodeCard 
+                          icon={<Battery size={24} className="text-emerald-500" />} 
+                          title="Battery" 
+                          value={dailyStats.solarToBattery} 
+                          color="border-emerald-200"
+                          subtext="Charged"
+                        />
+                    </div>
+                  </div>
+                </div>
             </div>
          </div>
       </div>
 
 
       {/* --- NIGHTTIME FLOW DIAGRAM --- */}
-      <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-2xl text-slate-100">
+      <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-2xl text-slate-100 overflow-hidden">
          <div className="flex items-center gap-2 mb-8 justify-center">
             <Moon className="text-blue-200 fill-blue-200" size={32} />
             <h3 className="text-2xl font-bold text-white">Nighttime Flow</h3>
          </div>
 
-         <div className="relative max-w-4xl mx-auto h-[250px]">
-            {/* Grid Container */}
-            <div className="grid grid-cols-3 h-full items-center justify-items-center gap-4">
-              
-              {/* Left: Sources */}
-              <div className="flex flex-col h-full justify-around w-full items-center">
-                 {/* Battery Source */}
-                 <NodeCard 
-                   icon={<Battery size={24} className="text-emerald-500" />} 
-                   title="Battery" 
-                   value={dailyStats.batteryToHome} 
-                   color="border-emerald-800 bg-slate-800 text-slate-200"
-                   subtext="Discharge (90% eff)"
-                 />
-                 
-                 {/* Grid Source */}
-                 <NodeCard 
-                   icon={<Zap size={24} className="text-blue-400" />} 
-                   title="Grid Import" 
-                   value={dailyStats.gridToHomeNight} 
-                   color="border-blue-900 bg-slate-800 text-slate-200"
-                 />
-              </div>
+         <div className="overflow-x-auto pb-4">
+            <div className="relative min-w-[600px] max-w-4xl mx-auto h-[250px]">
+                {/* Grid Container */}
+                <div className="grid grid-cols-3 h-full items-center justify-items-center gap-4">
+                  
+                  {/* Left: Sources */}
+                  <div className="flex flex-col h-full justify-around w-full items-center">
+                    {/* Battery Source */}
+                    <NodeCard 
+                      icon={<Battery size={24} className="text-emerald-500" />} 
+                      title="Battery" 
+                      value={dailyStats.batteryToHome} 
+                      color="border-emerald-800 bg-slate-800 text-slate-200"
+                      subtext="Discharge (90% eff)"
+                    />
+                    
+                    {/* Grid Source */}
+                    <NodeCard 
+                      icon={<Zap size={24} className="text-blue-400" />} 
+                      title="Grid Import" 
+                      value={dailyStats.gridToHomeNight} 
+                      color="border-blue-900 bg-slate-800 text-slate-200"
+                    />
+                  </div>
 
-              {/* Middle: Connections */}
-              <div className="flex flex-col h-full w-full justify-around py-8">
-                 {/* Battery to Home */}
-                 <div className="flex items-center w-full">
-                    <div className="flex-1 rotate-6 transform origin-left">
-                      <FlowArrow val={dailyStats.batteryToHome} color="bg-emerald-500" label="Discharge" />
+                  {/* Middle: Connections */}
+                  <div className="flex flex-col h-full w-full justify-around py-8 px-4">
+                    {/* Battery to Home */}
+                    <div className="flex items-center w-full">
+                        <div className="flex-1 rotate-6 transform origin-left">
+                          <FlowArrow val={dailyStats.batteryToHome} color="bg-emerald-500" label="Discharge" />
+                        </div>
                     </div>
-                 </div>
 
-                 {/* Grid to Home */}
-                 <div className="flex items-center w-full">
-                    <div className="flex-1 -rotate-6 transform origin-left">
-                      <FlowArrow val={dailyStats.gridToHomeNight} color="bg-blue-500" label="Import" />
+                    {/* Grid to Home */}
+                    <div className="flex items-center w-full">
+                        <div className="flex-1 -rotate-6 transform origin-left">
+                          <FlowArrow val={dailyStats.gridToHomeNight} color="bg-blue-500" label="Import" />
+                        </div>
                     </div>
-                 </div>
-              </div>
+                  </div>
 
-              {/* Right: Destination (Home) */}
-              <div className="row-span-2">
-                 <NodeCard 
-                    icon={<Home size={32} className="text-slate-300" />} 
-                    title="Home Load" 
-                    value={dailyStats.nightDemand} 
-                    color="border-slate-600 bg-slate-800 text-slate-100"
-                    subtext="Night Usage"
-                  />
-              </div>
+                  {/* Right: Destination (Home) */}
+                  <div className="row-span-2">
+                    <NodeCard 
+                        icon={<Home size={32} className="text-slate-300" />} 
+                        title="Home Load" 
+                        value={dailyStats.nightDemand} 
+                        color="border-slate-600 bg-slate-800 text-slate-100"
+                        subtext="Night Usage"
+                      />
+                  </div>
 
+                </div>
             </div>
          </div>
       </div>
@@ -406,7 +418,7 @@ export const DailyFlowDiagram: React.FC<DailyFlowDiagramProps> = ({ initialUsage
           Projected Monthly Totals
         </h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* New Import */}
           <div className="bg-white/10 rounded-xl p-4 backdrop-blur-sm border border-white/10">
             <div className="text-blue-200 text-xs font-bold uppercase tracking-wider mb-2">New Import (Grid to Home)</div>
@@ -428,6 +440,18 @@ export const DailyFlowDiagram: React.FC<DailyFlowDiagramProps> = ({ initialUsage
               ({dailyStats.solarToGrid.toFixed(2)} kWh/day × 30 days)
             </div>
           </div>
+
+          {/* Estimated Bill */}
+          <div className="bg-emerald-500/20 rounded-xl p-4 backdrop-blur-sm border border-emerald-400/30">
+            <div className="text-emerald-200 text-xs font-bold uppercase tracking-wider mb-2">Est. Monthly Bill</div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-bold">RM {projectedBill.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <div className="mt-2 text-sm text-emerald-100 font-mono">
+              After solar savings
+            </div>
+          </div>
+
         </div>
       </div>
 

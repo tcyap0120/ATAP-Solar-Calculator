@@ -12,10 +12,17 @@ import {
   PANEL_WATTAGE,
   PEAK_SUN_HOURS,
   BATTERY_CAPACITY_KWH,
-  EXPORT_RATE,
   SYSTEM_PRICING,
   BATTERY_COST_CASH,
-  BATTERY_COST_CC
+  BATTERY_COST_CC,
+  APRIL_PROMO_SINGLE_SYSTEM_DISCOUNT,
+  APRIL_PROMO_THREE_PHASE_SYSTEM_DISCOUNT,
+  APRIL_PROMO_SINGLE_SYSTEM_DISCOUNT_ZERO_BAT,
+  APRIL_PROMO_THREE_PHASE_SYSTEM_DISCOUNT_ZERO_BAT,
+  APRIL_PROMO_BATTERY_UNIT_DISCOUNT,
+  THREE_PHASE_12_13_INVERTER_UPGRADE_TO_8KW_RM,
+  APRIL_PROMO_AUTO_BACKUP_BOX_SINGLE_PHASE_RM,
+  APRIL_PROMO_AUTO_BACKUP_BOX_THREE_PHASE_RM
 } from '../constants';
 import { BillBreakdown, SimulationResult, PricingTier } from '../types';
 
@@ -26,10 +33,10 @@ import { BillBreakdown, SimulationResult, PricingTier } from '../types';
  */
 const calculateBaseCharge = (kwhToPrice: number, totalMonthlyUsage: number): number => {
   if (kwhToPrice <= 0) return 0;
-  
+
   // Determine rate based on Total Monthly Usage
-  const rate = totalMonthlyUsage > THRESHOLD_RATE_CHANGE 
-    ? RATE_ABOVE_1500 
+  const rate = totalMonthlyUsage > THRESHOLD_RATE_CHANGE
+    ? RATE_ABOVE_1500
     : RATE_BELOW_1500;
 
   return kwhToPrice * rate;
@@ -73,7 +80,7 @@ export const calculateBill = (totalKwh: number, exportKwh: number = 0): BillBrea
   const totalBaseCharge = calculateBaseCharge(totalKwh, totalKwh);
   const retailChargeTotal = totalKwh > RETAIL_CHARGE_THRESHOLD ? RETAIL_CHARGE : 0;
   const totalDiscount = totalKwh * discountRate; // Apply rate to full usage
-  
+
   const subtotalTotal = totalBaseCharge + retailChargeTotal + totalDiscount;
 
   // --- 3. Calculate Service Tax (Split Logic) ---
@@ -86,21 +93,21 @@ export const calculateBill = (totalKwh: number, exportKwh: number = 0): BillBrea
 
   if (totalKwh > TAX_THRESHOLD) {
     const kwhExempt = TAX_THRESHOLD; // 600
-    
+
     // Base charge for the exempt portion, using the rate determined by TOTAL usage
     const baseExempt = calculateBaseCharge(kwhExempt, totalKwh);
-    
+
     // Discount for the exempt portion, using the rate determined by TOTAL usage
     const discountExempt = kwhExempt * discountRate;
-    
+
     // Retail charge is 0 for the first 600
-    const retailExempt = 0; 
-    
+    const retailExempt = 0;
+
     const subtotalExempt = baseExempt + retailExempt + discountExempt;
-    
+
     // Taxable amount is the difference
     const taxableAmount = subtotalTotal - subtotalExempt;
-    
+
     serviceTax = Math.max(0, taxableAmount * TAX_RATE);
   } else {
     serviceTax = 0;
@@ -112,27 +119,31 @@ export const calculateBill = (totalKwh: number, exportKwh: number = 0): BillBrea
   const kwtbb = Math.max(0, kwtbbBase * KWTBB_RATE);
 
   // --- 5. Export Credit ---
-  // Export Credit = Export Units * Rate (0.20)
-  // This is a credit, so it reduces the bill.
-  const exportCredit = exportKwh * EXPORT_RATE * -1; // Negative value for deduction
+  // New Rule:
+  // if new import is <=1500kwh, use RM 0.2703 (27.03 sen) per kwh
+  // if new import is >1500kwh, use RM 0.3703 (37.03 sen) per kwh
+  const currentExportRate = totalKwh > THRESHOLD_RATE_CHANGE ? 0.3703 : 0.2703;
+  // Cap export credit calculation at the import amount (totalKwh)
+  const creditUnits = Math.min(exportKwh, totalKwh);
+  const exportCredit = creditUnits * currentExportRate * -1; // Negative value for deduction
 
   // --- 6. EE Incentive Adjustment for Export ---
   // Formula: IF(new export=0, 0, IF(new export > new import, -EE Incentive, -new export * (EE Incentive / new import)))
   // Note: totalDiscount is the "EE Incentive" (negative value).
   let eeIncentiveAdjustment = 0;
-  
+
   if (exportKwh === 0) {
     eeIncentiveAdjustment = 0;
   } else if (exportKwh > totalKwh) {
     eeIncentiveAdjustment = -totalDiscount; // Becomes positive
   } else {
     // totalKwh must be > 0 here because if totalKwh=0, exportKwh(>0) > totalKwh would catch above
-    eeIncentiveAdjustment = -exportKwh * (totalDiscount / totalKwh);
+    eeIncentiveAdjustment = -exportKwh * (totalDiscount / (totalKwh || 1));
   }
 
   // --- 7. Final Total ---
   let finalTotal = subtotalTotal + serviceTax + kwtbb + exportCredit + eeIncentiveAdjustment;
-  
+
   // Logic Fix: Ensure Final Bill is not negative
   finalTotal = Math.max(0, finalTotal);
 
@@ -146,13 +157,13 @@ export const calculateBill = (totalKwh: number, exportKwh: number = 0): BillBrea
     exportUnits: exportKwh,
     eeIncentiveAdjustment: eeIncentiveAdjustment,
     subtotal: subtotalTotal,
-    finalTotal: finalTotal, 
+    finalTotal: finalTotal,
     units: totalKwh
   };
 };
 
 export const simulateSolar = (
-  monthlyUsage: number, 
+  monthlyUsage: number,
   daytimePercentage: number,
   panelCount: number,
   batteryCount: number
@@ -162,13 +173,12 @@ export const simulateSolar = (
   const N = monthlyUsage * (1 - (daytimePercentage / 100));
 
   // 2. Calculate S (Solar Generation)
-  // 620W panels = 0.62 kW
-  // producing 0.62kwh per hour * 3.5 hours * 30 days
+  // 640W panels = 0.64 kWp; kWh per month = kW × peak sun hours × 30
   const kwPerPanelHour = PANEL_WATTAGE / 1000;
   const S = panelCount * kwPerPanelHour * PEAK_SUN_HOURS * 30;
 
   // 3. Calculate B (Total Battery Capacity Throughput)
-  // quantity * 12.87 * 30
+  // quantity × usable kWh/day × 30
   const B = batteryCount * BATTERY_CAPACITY_KWH * 30;
 
   // 4. Calculate R (Remaining Solar)
@@ -194,12 +204,12 @@ export const simulateSolar = (
   let newImportRaw = 0;
   if (R < 0) {
     // Note: batteryOut is 0 when R < 0
-    newImportRaw = Math.max(0, N - batteryOut) - R; 
+    newImportRaw = Math.max(0, N - batteryOut) - R;
   } else {
     // Note: batteryOut reduces Night load
     newImportRaw = Math.max(0, N - batteryOut);
   }
-  
+
   // Round new import to integer as requested
   const newImport = Math.round(newImportRaw);
 
@@ -210,7 +220,7 @@ export const simulateSolar = (
   // Data for Charts
   // Solar Direct Use: Amount of Solar used directly by D.
   const solarDirect = Math.min(S, D);
-  
+
   // Chart battery visualization
   const chartBattery = Math.min(batteryOut, N);
 
@@ -233,7 +243,7 @@ export const simulateSolar = (
  */
 export const getKwhFromBill = (targetBill: number): number => {
   if (targetBill <= 0) return 0;
-  
+
   let low = 0;
   let high = 10000; // Reasonable max
   let mid = 0;
@@ -257,11 +267,38 @@ export const getKwhFromBill = (targetBill: number): number => {
   return Math.round(mid);
 };
 
+export interface CalculateSystemCostOptions {
+  aprilLaunchingPromo?: boolean;
+  /** With April promo, 1+ batteries, and ticked: flat add-on to system cash/CC (not per battery). */
+  backupBoxUpgrade?: boolean;
+}
+
+/** Total RM discount (same amount subtracted from cash and CC) when April promo is active. */
+export const getAprilLaunchingPromoDiscount = (
+  phase: 'single' | 'three',
+  batteries: number
+): number => {
+  const systemPart =
+    batteries >= 1
+      ? phase === 'single'
+        ? APRIL_PROMO_SINGLE_SYSTEM_DISCOUNT
+        : APRIL_PROMO_THREE_PHASE_SYSTEM_DISCOUNT
+      : phase === 'single'
+        ? APRIL_PROMO_SINGLE_SYSTEM_DISCOUNT_ZERO_BAT
+        : APRIL_PROMO_THREE_PHASE_SYSTEM_DISCOUNT_ZERO_BAT;
+  return systemPart + batteries * APRIL_PROMO_BATTERY_UNIT_DISCOUNT;
+};
+
 /**
  * Lookup system cost based on panel count and battery count.
- * Includes Three-Phase price adjustments.
+ * Includes Three-Phase price adjustments and Inverter Upgrade logic.
  */
-export const calculateSystemCost = (panels: number, batteries: number, phase: 'single' | 'three' = 'single') => {
+export const calculateSystemCost = (
+  panels: number,
+  batteries: number,
+  phase: 'single' | 'three' = 'single',
+  options?: CalculateSystemCostOptions
+) => {
   const tier = SYSTEM_PRICING.find(p => p.panels === panels);
   if (!tier) return null;
 
@@ -269,29 +306,137 @@ export const calculateSystemCost = (panels: number, batteries: number, phase: 's
   let ccPrice = tier.ccPrice;
   let inverterSize = tier.inverterSize;
 
-  // Three Phase Logic Adjustments
-  if (phase === 'three') {
-    if (panels >= 6 && panels <= 14) {
-      cashPrice += 3350;
-      ccPrice += 3350;
-      // Updated: Use 8kWac for smaller systems on 3-phase, not 10kWac
-      inverterSize = "8 kWac Three Phase"; 
-    } else if (panels >= 15 && panels <= 22) {
-      cashPrice += 1600;
-      ccPrice += 1600;
-      // Updated: Use 8kWac for smaller systems on 3-phase, not 10kWac
-      inverterSize = "8 kWac Three Phase";
+  const hasExplicitThreePhase =
+    tier.threePhaseCashPrice != null && tier.threePhaseCcPrice != null;
+
+  // Tier prices are system-only (panels, inverter, install). Battery units always add BATTERY_COST_* each.
+  // Single-phase (sheet): no battery = cashPrice/ccPrice; with batteries = cashPriceWithBattery/ccPriceWithBattery
+  // as system base, then + BATTERY_COST_* per unit (e.g. 14p + 1 bat = 23150 + 8200 cash).
+  // Three-phase (sheet tiers): no battery = threePhaseCashPrice / threePhaseCcPrice; with batteries =
+  // threePhaseCashPriceWithBattery / threePhaseCcPriceWithBattery, then + BATTERY_COST_* per battery.
+  if (phase === 'three' && hasExplicitThreePhase) {
+    inverterSize = tier.threePhaseInverterSize ?? tier.inverterSize;
+    if (
+      batteries > 0 &&
+      tier.threePhaseCashPriceWithBattery != null &&
+      tier.threePhaseCcPriceWithBattery != null
+    ) {
+      cashPrice = tier.threePhaseCashPriceWithBattery;
+      ccPrice = tier.threePhaseCcPriceWithBattery;
+    } else {
+      cashPrice = tier.threePhaseCashPrice!;
+      ccPrice = tier.threePhaseCcPrice!;
     }
-    // For p >= 23, it's already Three Phase in constant DB, no adjustment needed.
+  } else if (
+    phase === 'single' &&
+    batteries > 0 &&
+    tier.cashPriceWithBattery != null &&
+    tier.ccPriceWithBattery != null
+  ) {
+    cashPrice = tier.cashPriceWithBattery;
+    ccPrice = tier.ccPriceWithBattery;
+  }
+
+  // --- Single Phase Validation Rules ---
+  // Note: Removed strict return null to prevent UI freezing.
+  // Validation is now handled in PlanRecommender (for auto plans) and RecommendationCard (for user warning).
+
+  const originalInverter = inverterSize;
+  const systemKwp = panels * (PANEL_WATTAGE / 1000);
+  let upgradeCost = 0;
+  let isUpgraded = false;
+
+  // --- 2. Inverter Upgrade Logic (Strict Capacity Limits) ---
+  // Enforces capacity limits by upgrading inverter and adding cost.
+
+  const hasBattery = batteries > 0;
+
+  // Define Limits based on battery presence
+  // Limits:             No Bat   |  With Bat
+  // 5 kWac (1 Phase)  : 6.82     |  8.68   (Not upgraded automatically)
+  // 8 kWac (3 Phase)  : 10.54    |  13.64
+  // 10 kWac (3 Phase) : 13.64    |  16.74
+  // 12 kWac (3 Phase) : 16.12    |  19.84
+  // 15 kWac (3 Phase) : 20.46    |  24.80
+
+  const limit8kW = hasBattery ? 13.64 : 10.54;
+  const limit10kW = hasBattery ? 16.74 : 13.64;
+  const limit12kW = hasBattery ? 19.84 : 16.12;
+
+  if (phase === 'single') {
+    // Single Phase Logic: DO NOT UPGRADE > 5kWac
+    // We simply accept the configuration if it passed validation above.
+    // Inverter remains what is defined in SYSTEM_PRICING (3.6 / 5 / 6 / 8 kWac single-phase by tier).
+  } else if (!hasExplicitThreePhase) {
+    // Three Phase Cascading Logic (tiers 41+ without explicit three-phase sheet pricing)
+
+    // Check 8kWac Limit -> Upgrade to 10
+    if (inverterSize.includes("8 kWac") && systemKwp > limit8kW) {
+      inverterSize = "10 kWac Three Phase";
+      upgradeCost += 300;
+      isUpgraded = true;
+    }
+
+    // Check 10kWac Limit -> Upgrade to 12
+    if (inverterSize.includes("10 kWac") && systemKwp > limit10kW) {
+      inverterSize = "12 kWac Three Phase";
+      upgradeCost += 600; // 10->12 is RM600
+      isUpgraded = true;
+    }
+
+    // Check 12kWac Limit -> Upgrade to 15
+    if (inverterSize.includes("12 kWac") && systemKwp > limit12kW) {
+      inverterSize = "15 kWac Three Phase";
+      upgradeCost += 800; // 12->15 is RM800
+      isUpgraded = true;
+    }
+  }
+
+  // Three-phase 12–13 panels: tier lists 5 kWac; auto-upgrade to 8 kWac (+RM150 cash & CC).
+  if (
+    phase === 'three' &&
+    hasExplicitThreePhase &&
+    (panels === 12 || panels === 13) &&
+    inverterSize.includes('5 kWac')
+  ) {
+    inverterSize = '8 kWac Three Phase';
+    upgradeCost += THREE_PHASE_12_13_INVERTER_UPGRADE_TO_8KW_RM;
+    isUpgraded = true;
   }
 
   const batCash = batteries * BATTERY_COST_CASH;
   const batCC = batteries * BATTERY_COST_CC;
 
+  const backupBoxUpgradeActive = Boolean(
+    options?.aprilLaunchingPromo &&
+      options?.backupBoxUpgrade &&
+      hasBattery
+  );
+  const backupBoxUpgradeRM = backupBoxUpgradeActive
+    ? phase === 'single'
+      ? APRIL_PROMO_AUTO_BACKUP_BOX_SINGLE_PHASE_RM
+      : APRIL_PROMO_AUTO_BACKUP_BOX_THREE_PHASE_RM
+    : 0;
+
+  let cash = cashPrice + batCash + upgradeCost + backupBoxUpgradeRM;
+  let cc = ccPrice + batCC + upgradeCost + backupBoxUpgradeRM;
+
+  let aprilPromoDiscount = 0;
+  if (options?.aprilLaunchingPromo) {
+    aprilPromoDiscount = getAprilLaunchingPromoDiscount(phase, batteries);
+    cash -= aprilPromoDiscount;
+    cc -= aprilPromoDiscount;
+  }
+
   return {
-    cash: cashPrice + batCash,
-    cc: ccPrice + batCC,
+    cash,
+    cc,
     inverterSize,
-    tier
+    tier,
+    isUpgraded,
+    originalInverter,
+    upgradeCost,
+    aprilPromoDiscount: options?.aprilLaunchingPromo ? aprilPromoDiscount : undefined,
+    backupBoxUpgradeRM: backupBoxUpgradeRM > 0 ? backupBoxUpgradeRM : undefined
   };
 };

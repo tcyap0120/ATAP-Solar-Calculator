@@ -37,6 +37,9 @@ export const BillDetails: React.FC<BillDetailsProps> = ({ data, title, isProject
     );
   };
 
+  // Determine current export rate for display subtext
+  const currentExportRate = data.units > 1500 ? 0.3703 : 0.2703;
+
   return (
     <div className={`relative overflow-hidden rounded-2xl border ${isProjected ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 bg-white'} p-4 shadow-sm`}>
       {isProjected && (
@@ -70,7 +73,7 @@ export const BillDetails: React.FC<BillDetailsProps> = ({ data, title, isProject
             label="Export Credit" 
             value={data.exportCredit} 
             type="sub" 
-            subtext={`${data.exportUnits?.toLocaleString() ?? 0} units @ RM0.20`} 
+            subtext={`${data.exportUnits?.toLocaleString() ?? 0} units @ RM${currentExportRate.toFixed(4)}`} 
           />
         ) : null}
         

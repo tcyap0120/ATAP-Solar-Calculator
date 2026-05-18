@@ -1,5 +1,4 @@
 
-
 export interface TariffBlock {
   max: number;
   rate: number;
@@ -41,8 +40,20 @@ export interface PricingTier {
   panels: number;
   kwp: number;
   inverterSize: string;
+  /** No-battery system (cash / 36m CC). */
   cashPrice: number;
   ccPrice: number; // 36 Month Installment Price
+  /** Single-phase: when batteries > 0, used as system cash/CC base before adding `BATTERY_COST_*` per unit. */
+  cashPriceWithBattery?: number;
+  ccPriceWithBattery?: number;
+  /** Three-phase: no-battery system cash/CC. With batteries, totals use `threePhaseCashPriceWithBattery` + `BATTERY_COST_*` per unit instead. */
+  threePhaseCashPrice?: number;
+  threePhaseCcPrice?: number;
+  /** Three-phase: when batteries > 0, used as system cash/CC base before adding BATTERY_COST_* per unit. */
+  threePhaseCashPriceWithBattery?: number;
+  threePhaseCcPriceWithBattery?: number;
+  /** Inverter label for three-phase (differs from single-phase for 6–14). */
+  threePhaseInverterSize?: string;
 }
 
 export interface RecommendationResult {
@@ -62,4 +73,9 @@ export interface RecommendationResult {
   newImportKwh: number;
   newExportKwh: number;
   batteryUtilization: number;
+  // New fields for Inverter Upgrade Logic
+  isUpgraded?: boolean;
+  upgradeCost?: number;
+  originalInverterSize?: string;
+  exportCreditValue?: number;
 }

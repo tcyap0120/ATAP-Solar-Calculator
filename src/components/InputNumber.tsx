@@ -51,6 +51,7 @@ export const InputNumber: React.FC<InputNumberProps> = ({
           step={step}
           value={value}
           onChange={handleChange}
+          onWheel={(e) => e.currentTarget.blur()}
           placeholder={placeholder}
           className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-lg rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 font-mono"
         />

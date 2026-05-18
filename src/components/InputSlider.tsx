@@ -28,8 +28,19 @@ export const InputSlider: React.FC<InputSliderProps> = ({
           {icon}
           <span>{label}</span>
         </div>
-        <div className="text-blue-600 font-bold font-mono">
-          {value.toLocaleString()} <span className="text-xs text-slate-400 font-sans font-normal">{unit}</span>
+        <div className="flex items-center">
+          <input
+            type="number"
+            min={min}
+            max={max}
+            value={value}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              if (!isNaN(val)) onChange(Math.min(max, Math.max(min, val)));
+            }}
+            className="w-16 text-right font-bold text-blue-600 font-mono border-b border-transparent hover:border-blue-300 focus:border-blue-500 focus:outline-none bg-transparent transition-colors"
+          />
+          <span className="text-xs text-slate-400 font-sans font-normal ml-1">{unit}</span>
         </div>
       </div>
       <input

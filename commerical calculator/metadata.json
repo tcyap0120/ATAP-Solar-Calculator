@@ -1,0 +1,5 @@
+{
+  "name": "Commercial Calc",
+  "description": "Commercial solar PV calculator with ROI, tax incentives, and tiered pricing logic.",
+  "requestFramePermissions": []
+}
