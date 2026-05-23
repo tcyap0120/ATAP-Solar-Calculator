@@ -444,12 +444,6 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
           : `⏰ Limited promo until 15th May 2026 only!\n\n`;
     }
 
-    if (suriaHomeRebate) {
-      msg +=
-        lang === 'zh'
-          ? `🏛️ SuRIA Home 政府回扣 RM3,000 已纳入以下报价。\n\n`
-          : `🏛️ SuRIA Home Government Rebate of RM3,000 has been applied to the prices below.\n\n`;
-    }
 
     plansToInclude.forEach((plan, index) => {
       const r = plan.data;
