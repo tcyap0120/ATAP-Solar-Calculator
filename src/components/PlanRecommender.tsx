@@ -165,7 +165,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
   };
 
   // Selection Rule State
-  const [selectionRule, setSelectionRule] = useState<'saving' | 'battery'>('saving');
+  const [selectionRule, setSelectionRule] = useState<'saving' | 'battery'>('battery');
 
   // Optimization Algorithm
   const recommendations = useMemo(() => {
