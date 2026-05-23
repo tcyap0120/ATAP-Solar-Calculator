@@ -476,26 +476,31 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       msg += `☀️ ${lang === 'zh' ? '方案' : 'Plan'} ${index + 1}：${plan.title}\n\n`;
       msg += `${lang === 'zh' ? '系统配置' : 'System Size'}： *${r.panels} ${lang === 'zh' ? '片太阳能板' : 'Panels'} ${kwp} kWp ${batStr}*\n`;
 
+      // When SuRIA rebate is active the stored prices already have -3000; show pre-rebate first, then after-rebate.
+      const ccBeforeRebate = suriaHomeRebate ? r.systemCostCC + 3000 : r.systemCostCC;
+      const cashBeforeRebate = suriaHomeRebate ? r.systemCostCash + 3000 : r.systemCostCash;
+
       if (lang === 'zh') {
         msg += `📌每月预计节省电费：约 RM${roundedMonthlySavings}+-\n`;
         msg += `📌每年预计节省电费：约 RM${roundedAnnualSavings}+-\n`;
-        if (aprilLaunchingPromo) {
-          msg += `📌系统原价：RM${listPriceCCBeforePromo.toLocaleString()}\n`;
+        msg += `📌早鸟优惠价：RM${ccBeforeRebate.toLocaleString()}（可零利息分期付款36个月）\n`;
+        msg += `📌早鸟现金优惠价：RM${cashBeforeRebate.toLocaleString()}\n`;
+        if (suriaHomeRebate) {
+          msg += `\n🎉RM3000津贴后价格: *RM${r.systemCostCC.toLocaleString()}*\n`;
+          msg += `💰RM3000津贴后现金价: *RM${r.systemCostCash.toLocaleString()}*\n`;
         }
-        msg += `🎉早鸟优惠价：RM${r.systemCostCC.toLocaleString()}（可零利息分期付款36个月）\n`;
-        msg += `💰早鸟现金优惠价：RM${r.systemCostCash.toLocaleString()}\n`;
         msg += `📌预计回本期：${r.paybackYearsCash.toFixed(1)} - ${r.paybackYearsCC.toFixed(1)}年\n\n`;
       } else {
         msg += `📌Est. Monthly Savings: ~RM${roundedMonthlySavings}+-\n`;
         msg += `📌Est. Annual Savings: ~RM${roundedAnnualSavings}+-\n`;
-        if (aprilLaunchingPromo) {
-          msg += `📌Price: RM${listPriceCCBeforePromo.toLocaleString()}\n`;
+        msg += `📌Promo Price: RM${ccBeforeRebate.toLocaleString()} (0% Interest / 36m)\n`;
+        msg += `📌Cash Price: RM${cashBeforeRebate.toLocaleString()}\n`;
+        if (suriaHomeRebate) {
+          msg += `\n🎉After RM3,000 Rebate (CC): *RM${r.systemCostCC.toLocaleString()}*\n`;
+          msg += `💰After RM3,000 Rebate (Cash): *RM${r.systemCostCash.toLocaleString()}*\n`;
         }
-        msg += `🎉Promo Price: RM${r.systemCostCC.toLocaleString()} (0% Interest / 36m)\n`;
-        msg += `💰Cash Price: RM${r.systemCostCash.toLocaleString()}\n`;
         msg += `📌Est. ROI Period: ${r.paybackYearsCash.toFixed(1)} - ${r.paybackYearsCC.toFixed(1)} Years\n\n`;
       }
-      msg += `*\n`;
     });
 
     if (lang === 'zh') {
