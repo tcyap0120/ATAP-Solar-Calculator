@@ -325,49 +325,28 @@ const App = () => {
         </nav>
 
         <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-3">
-          <div className="space-y-2">
-            <label className="flex items-start gap-2 cursor-pointer text-left rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100/95">
-              <input
-                type="checkbox"
-                checked={aprilLaunchingPromo}
-                onChange={e => handleAprilLaunchingPromoChange(e.target.checked)}
-                className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-amber-400/60 text-amber-500 focus:ring-amber-500"
-              />
-              <span className="leading-snug">
-                <span className="font-bold text-amber-50">April Launching Promo</span>
-                <span className="block text-amber-200/80 mt-0.5">No battery: −RM800 single / −RM1600 3-phase on system. With 1+ batteries: −RM1800 / −RM3000 on system; −RM800 per battery (cash &amp; CC).</span>
-              </span>
-            </label>
-            {aprilLaunchingPromo && (
-              <label className="ml-5 flex items-start gap-2 cursor-pointer rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-100/90">
+          {activeTab === 'planner' && (
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer text-left rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100/95">
                 <input
                   type="checkbox"
-                  checked={upgradeAutoBackupBox}
-                  onChange={e => setUpgradeAutoBackupBox(e.target.checked)}
-                  className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-amber-400/60 text-amber-500 focus:ring-amber-500"
+                  checked={aprilLaunchingPromo}
+                  onChange={e => handleAprilLaunchingPromoChange(e.target.checked)}
+                  className="h-3.5 w-3.5 shrink-0 rounded border-amber-400/60 text-amber-500 focus:ring-amber-500"
                 />
-                <span className="leading-snug">
-                  <span className="font-semibold text-amber-50">Upgrade to Auto BackupBox</span>
-                  <span className="block text-amber-200/75 mt-0.5">
-                    Only with 1+ battery: +RM800 single-phase / +RM1500 three-phase on system cash &amp; CC (not on
-                    battery).
-                  </span>
-                </span>
+                <span className="font-bold text-amber-50">April Launching Promo</span>
               </label>
-            )}
-            <label className="flex items-start gap-2 cursor-pointer rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-100/95">
-              <input
-                type="checkbox"
-                checked={suriaHomeRebate}
-                onChange={e => setSuriaHomeRebate(e.target.checked)}
-                className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-emerald-400/60 text-emerald-500 focus:ring-emerald-500"
-              />
-              <span className="leading-snug">
+              <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-100/95">
+                <input
+                  type="checkbox"
+                  checked={suriaHomeRebate}
+                  onChange={e => setSuriaHomeRebate(e.target.checked)}
+                  className="h-3.5 w-3.5 shrink-0 rounded border-emerald-400/60 text-emerald-500 focus:ring-emerald-500"
+                />
                 <span className="font-bold text-emerald-50">SuRIA Home RM3,000 Rebate</span>
-                <span className="block text-emerald-200/80 mt-0.5">Government rebate of RM3,000 — deducted from both cash &amp; CC price.</span>
-              </span>
-            </label>
-          </div>
+              </label>
+            </div>
+          )}
           {showInstallBtn && (
             <button
               onClick={handleInstallClick}
