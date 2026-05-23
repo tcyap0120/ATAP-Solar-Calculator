@@ -1975,7 +1975,18 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
             </table>
             </div>
 
-            <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-200 flex flex-col gap-1 text-slate-400 text-[11px] sm:text-xs px-0 sm:px-2">
+            {suriaHomeRebate && (
+              <div className="mt-4 sm:mt-6 flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 text-[11px] sm:text-xs text-emerald-800 leading-relaxed">
+                <Info size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                <span>
+                  {language === 'zh'
+                    ? '以上价格已包含 RM3,000 SuRIA Home 政府津贴。该 RM3,000 津贴将由 TNB 直接转账至客户银行账户。'
+                    : 'Prices shown are after the RM3,000 SuRIA Home government rebate. The RM3,000 will be transferred directly to the client\'s bank account by TNB.'}
+                </span>
+              </div>
+            )}
+
+            <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-slate-200 flex flex-col gap-1 text-slate-400 text-[11px] sm:text-xs px-0 sm:px-2">
               <div className="flex items-center gap-2">
                 <Info size={14} className="text-blue-500" />
                 <span>
