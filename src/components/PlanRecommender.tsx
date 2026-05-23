@@ -1105,6 +1105,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
           daytimePercent={daytimePercent}
           currentBill={typeof billAmount === 'number' ? billAmount : 0}
           usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
+          suriaHomeRebate={suriaHomeRebate}
         />
       )}
 
@@ -1563,6 +1564,7 @@ interface ComparisonModalProps {
   daytimePercent: number;
   currentBill: number;
   usageKwh: number;
+  suriaHomeRebate: boolean;
 }
 
 const ComparisonModal: React.FC<ComparisonModalProps> = ({
@@ -1572,7 +1574,8 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
   onToggleLanguage,
   daytimePercent,
   currentBill,
-  usageKwh
+  usageKwh,
+  suriaHomeRebate
 }) => {
   const tableRef = useRef<HTMLDivElement>(null);
   const [customerName, setCustomerName] = useState('');
@@ -1933,28 +1936,40 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
                   <td className="p-2 sm:p-4 font-bold text-slate-400 text-[10px] sm:text-xs uppercase bg-slate-50/30 align-top pt-4 sm:pt-6 group-hover:bg-slate-50 transition-colors">
                     {language === 'zh' ? '价格详情' : 'Price Details'}
                   </td>
-                  {data.map((item, idx) => (
-                    <td key={idx} className="p-2 sm:p-4 align-top">
-                      <div className="space-y-3 sm:space-y-4">
-                        {/* Installment Price (Top) */}
-                        <div>
-                          <div className="text-[10px] uppercase text-slate-400 font-bold mb-0.5">
-                            {language === 'zh' ? '系统价格' : 'Installment Price'}
+                  {data.map((item, idx) => {
+                    const ccAfter = item.data.systemCostCC;
+                    const cashAfter = item.data.systemCostCash;
+                    const ccBefore = suriaHomeRebate ? ccAfter + 3000 : ccAfter;
+                    const cashBefore = suriaHomeRebate ? cashAfter + 3000 : cashAfter;
+                    return (
+                      <td key={idx} className="p-2 sm:p-4 align-top">
+                        <div className="space-y-3 sm:space-y-4">
+                          {/* Installment Price */}
+                          <div>
+                            <div className="text-[10px] uppercase text-slate-400 font-bold mb-0.5">
+                              {language === 'zh' ? '系统价格' : 'Installment Price'}
+                            </div>
+                            {suriaHomeRebate && (
+                              <div className="text-sm text-slate-400 line-through tabular-nums">RM {ccBefore.toLocaleString()}</div>
+                            )}
+                            <div className="text-lg sm:text-xl font-bold text-slate-900 tabular-nums">RM {ccAfter.toLocaleString()}</div>
+                            <div className="text-[10px] sm:text-xs text-slate-500 mt-0.5">RM {Math.round(ccAfter / 36).toLocaleString()} / {language === 'zh' ? '月' : 'mo'} (36{language === 'zh' ? '期' : 'm'})</div>
                           </div>
-                          <div className="text-lg sm:text-xl font-bold text-slate-900 tabular-nums">RM {item.data.systemCostCC.toLocaleString()}</div>
-                          <div className="text-[10px] sm:text-xs text-slate-500 mt-0.5">RM {Math.round(item.data.systemCostCC / 36).toLocaleString()} / {language === 'zh' ? '月' : 'mo'} (36{language === 'zh' ? '期' : 'm'})</div>
-                        </div>
 
-                        {/* Cash Price (Bottom) */}
-                        <div className="pt-2 sm:pt-3 border-t border-slate-200">
-                          <div className="text-[10px] uppercase text-emerald-600 font-bold mb-0.5">
-                            {language === 'zh' ? '现金优惠价' : 'Cash Price'}
+                          {/* Cash Price */}
+                          <div className="pt-2 sm:pt-3 border-t border-slate-200">
+                            <div className="text-[10px] uppercase text-emerald-600 font-bold mb-0.5">
+                              {language === 'zh' ? '现金优惠价' : 'Cash Price'}
+                            </div>
+                            {suriaHomeRebate && (
+                              <div className="text-sm text-slate-400 line-through tabular-nums">RM {cashBefore.toLocaleString()}</div>
+                            )}
+                            <div className="text-base sm:text-lg font-bold text-emerald-600 tabular-nums">RM {cashAfter.toLocaleString()}</div>
                           </div>
-                          <div className="text-base sm:text-lg font-bold text-emerald-600 tabular-nums">RM {item.data.systemCostCash.toLocaleString()}</div>
                         </div>
-                      </div>
-                    </td>
-                  ))}
+                      </td>
+                    );
+                  })}
                 </tr>
               </tbody>
             </table>
