@@ -440,7 +440,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
     if (aprilLaunchingPromo) {
       msg +=
         lang === 'zh'
-          ? `⏰ 限时优惠仅限至 2026年5月15日！\n\n`
+          ? `⏰ 限时优惠仅限至 2026年5月30日！\n\n`
           : `⏰ Limited promo until 15th May 2026 only!\n\n`;
     }
 
