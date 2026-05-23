@@ -14,6 +14,8 @@ interface PlanRecommenderProps {
   onAprilLaunchingPromoChange: (value: boolean) => void;
   upgradeAutoBackupBox: boolean;
   onUpgradeAutoBackupBoxChange: (value: boolean) => void;
+  suriaHomeRebate: boolean;
+  onSuriaHomeRebateChange: (value: boolean) => void;
 }
 
 // Helper function to calculate a scenario result
@@ -26,7 +28,8 @@ const calculateScenario = (
   billAmount: number,
   gapWarning: boolean,
   aprilLaunchingPromo: boolean,
-  backupBoxUpgrade: boolean
+  backupBoxUpgrade: boolean,
+  suriaHomeRebate: boolean = false
 ): RecommendationResult | null => {
   const effectiveUsage = typeof usageKwh === 'number' ? usageKwh : 0;
 
@@ -38,7 +41,8 @@ const calculateScenario = (
   const sim = simulateSolar(effectiveUsage, daytimePercent, p, b);
   const costs = calculateSystemCost(p, b, phase, {
     aprilLaunchingPromo,
-    backupBoxUpgrade
+    backupBoxUpgrade,
+    suriaHomeRebate
   });
 
   if (!costs) return null;
@@ -85,7 +89,9 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
   aprilLaunchingPromo,
   onAprilLaunchingPromoChange,
   upgradeAutoBackupBox,
-  onUpgradeAutoBackupBoxChange
+  onUpgradeAutoBackupBoxChange,
+  suriaHomeRebate,
+  onSuriaHomeRebateChange
 }) => {
   // Inputs
   const [usageKwh, setUsageKwh] = useState<number | ''>(initialUsage);
@@ -167,10 +173,10 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
     const userLimit = roofMaxPanels === '' ? 999 : roofMaxPanels;
 
     const results: RecommendationResult[] = [];
-    // Single-phase price sheet to 21 panels; three-phase to 40.
+    // Single-phase: max 14 panels; three-phase to 40.
     const maxPanels = Math.min(
       userLimit,
-      phase === 'single' ? 21 : 40,
+      phase === 'single' ? 14 : 40,
       SYSTEM_PRICING[SYSTEM_PRICING.length - 1].panels
     );
     const minPanels = SYSTEM_PRICING[0].panels;
@@ -179,10 +185,10 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       const maxBat = 20;
       for (let b = 0; b <= maxBat; b++) {
 
-        // Single Phase: price sheet allows up to 14 panels without battery, 21 with battery.
+        // Single Phase: max 11 panels without battery, 14 panels with battery.
         if (phase === 'single') {
-          if (b === 0 && p > 14) continue;
-          if (p > 21) continue;
+          if (b === 0 && p > 11) continue;
+          if (p > 14) continue;
         }
 
         const result = calculateScenario(
@@ -190,7 +196,8 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
           typeof billAmount === 'number' ? billAmount : 0,
           gapWarning,
           aprilLaunchingPromo,
-          upgradeAutoBackupBox
+          upgradeAutoBackupBox,
+          suriaHomeRebate
         );
 
         if (!result) continue;
@@ -286,7 +293,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
 
     return { lowestBreakeven, mediumOffset, highOffset, matchKwh, maxSaving, batteryPlans };
 
-  }, [usageKwh, phase, daytimePercent, roofMaxPanels, billAmount, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox]);
+  }, [usageKwh, phase, daytimePercent, roofMaxPanels, billAmount, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate]);
 
   // Handle plan updates from cards
   const handleUpdatePlan = useCallback((id: string, newResult: RecommendationResult) => {
@@ -307,9 +314,10 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       typeof billAmount === 'number' ? billAmount : 0,
       gapWarning,
       aprilLaunchingPromo,
-      upgradeAutoBackupBox
+      upgradeAutoBackupBox,
+      suriaHomeRebate
     );
-  }, [manualPanels, manualBatteries, usageKwh, phase, daytimePercent, billAmount, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox]);
+  }, [manualPanels, manualBatteries, usageKwh, phase, daytimePercent, billAmount, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate]);
 
 
   // Filter selections based on current mode
@@ -436,6 +444,13 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
           : `⏰ Limited promo until 15th May 2026 only!\n\n`;
     }
 
+    if (suriaHomeRebate) {
+      msg +=
+        lang === 'zh'
+          ? `🏛️ SuRIA Home 政府回扣 RM3,000 已纳入以下报价。\n\n`
+          : `🏛️ SuRIA Home Government Rebate of RM3,000 has been applied to the prices below.\n\n`;
+    }
+
     plansToInclude.forEach((plan, index) => {
       const r = plan.data;
       const roundedMonthlySavings = Math.floor(r.monthlySavings / 10) * 10;
@@ -506,7 +521,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
     }
 
     return msg;
-  }, [recommendations, manualResult, currentModeSelectedPlans, getActivePlanData, billAmount, usageKwh, daytimePercent, phase, roofMaxPanels, selectionRule, aprilLaunchingPromo, upgradeAutoBackupBox]);
+  }, [recommendations, manualResult, currentModeSelectedPlans, getActivePlanData, billAmount, usageKwh, daytimePercent, phase, roofMaxPanels, selectionRule, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate]);
 
   // FIX: corrected Clipboard method name from webText to writeText
   const copyToClipboard = () => {
@@ -680,7 +695,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
               </button>
             </div>
             {phase === 'single' ? (
-              <span className="text-[10px] text-amber-600 mt-1">Max 21 Panels (8 kWac)</span>
+              <span className="text-[10px] text-amber-600 mt-1">Max 11 Panels (no battery) / 14 Panels (with battery)</span>
             ) : (
               <span className="text-[10px] text-amber-600 mt-1">Max 40 Panels (15kWac)</span>
             )}
@@ -752,6 +767,22 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
               </span>
             </label>
           )}
+          <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-950">
+            <input
+              type="checkbox"
+              checked={suriaHomeRebate}
+              onChange={e => onSuriaHomeRebateChange(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-emerald-400 text-emerald-600 focus:ring-emerald-500"
+            />
+            <span>
+              <span className="font-bold">{language === 'zh' ? 'SuRIA Home 政府回扣 RM3,000' : 'SuRIA Home RM3,000 Rebate'}</span>
+              <span className="block text-xs text-emerald-800/90 mt-0.5">
+                {language === 'zh'
+                  ? '政府提供 RM3,000 回扣，适用于所有系统（现金及分期同等扣减）。'
+                  : 'Government rebate of RM3,000 applied to all systems — deducted from both cash and CC price.'}
+              </span>
+            </span>
+          </label>
         </div>
 
       </div>
@@ -847,6 +878,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 gapWarning={gapWarning}
                 aprilLaunchingPromo={aprilLaunchingPromo}
                 upgradeAutoBackupBox={upgradeAutoBackupBox}
+                suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
               />
             )}
@@ -868,6 +900,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 gapWarning={gapWarning}
                 aprilLaunchingPromo={aprilLaunchingPromo}
                 upgradeAutoBackupBox={upgradeAutoBackupBox}
+                suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
               />
             )}
@@ -889,6 +922,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 gapWarning={gapWarning}
                 aprilLaunchingPromo={aprilLaunchingPromo}
                 upgradeAutoBackupBox={upgradeAutoBackupBox}
+                suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
               />
             )}
@@ -910,6 +944,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 gapWarning={gapWarning}
                 aprilLaunchingPromo={aprilLaunchingPromo}
                 upgradeAutoBackupBox={upgradeAutoBackupBox}
+                suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
               />
             )}
@@ -931,6 +966,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 gapWarning={gapWarning}
                 aprilLaunchingPromo={aprilLaunchingPromo}
                 upgradeAutoBackupBox={upgradeAutoBackupBox}
+                suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
               />
             )}
@@ -967,6 +1003,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                   gapWarning={gapWarning}
                   aprilLaunchingPromo={aprilLaunchingPromo}
                   upgradeAutoBackupBox={upgradeAutoBackupBox}
+                  suriaHomeRebate={suriaHomeRebate}
                   onUpdate={handleUpdatePlan}
                 />
               );
@@ -1027,6 +1064,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 gapWarning={gapWarning}
                 aprilLaunchingPromo={aprilLaunchingPromo}
                 upgradeAutoBackupBox={upgradeAutoBackupBox}
+                suriaHomeRebate={suriaHomeRebate}
               />
             ) : (
               <div className="h-full min-h-[300px] flex flex-col items-center justify-center bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-slate-400">
@@ -1140,13 +1178,14 @@ interface RecommendationCardProps {
   gapWarning: boolean;
   aprilLaunchingPromo: boolean;
   upgradeAutoBackupBox: boolean;
+  suriaHomeRebate: boolean;
   onUpdate?: (id: string, newResult: RecommendationResult) => void;
 }
 
 const RecommendationCard: React.FC<RecommendationCardProps> = ({
   id, title, result: initialResult, badge, badgeColor, icon,
   currentBill, daytimePercent, isSelected, onToggle,
-  phase, usageKwh, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, onUpdate
+  phase, usageKwh, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate, onUpdate
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -1173,7 +1212,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     if (p < 6) return;
 
     const newRes = calculateScenario(
-      p, b, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox
+      p, b, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate
     );
     if (!newRes) return;
 
@@ -1186,7 +1225,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
 
     setResult(newRes);
     if (onUpdate) onUpdate(id, newRes);
-  }, [panels, batteries, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, id, onUpdate]);
+  }, [panels, batteries, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate, id, onUpdate]);
 
   const invLower = result.inverterSize.toLowerCase();
   const roofAngles =
@@ -1261,11 +1300,11 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   };
 
   const isExportHigh = result.newExportKwh > result.newImportKwh;
-  const isPhaseMismatch = phase === 'single' && (typeof panels === 'number' ? panels : 0) > 21;
+  const isPhaseMismatch = phase === 'single' && (typeof panels === 'number' ? panels : 0) > 14;
 
   const isSinglePhaseLimitExceeded = phase === 'single' && (
-    ((typeof batteries === 'number' ? batteries : 0) === 0 && (typeof panels === 'number' ? panels : 0) > 14) ||
-    ((typeof batteries === 'number' ? batteries : 0) > 0 && (typeof panels === 'number' ? panels : 0) > 21)
+    ((typeof batteries === 'number' ? batteries : 0) === 0 && (typeof panels === 'number' ? panels : 0) > 11) ||
+    ((typeof batteries === 'number' ? batteries : 0) > 0 && (typeof panels === 'number' ? panels : 0) > 14)
   );
 
   return (
@@ -1373,7 +1412,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-600" />
             <div>
               <span className="font-bold block mb-0.5">Phase Limit Exceeded</span>
-              Single Phase usually supports max 21 panels (with battery).
+              Single Phase supports max 14 panels (with battery).
             </div>
           </div>
         )}
@@ -1384,7 +1423,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             <AlertTriangle size={14} className="mt-0.5 shrink-0 text-red-600" />
             <div>
               <span className="font-bold block mb-0.5">Single Phase Limit Exceeded</span>
-              Single-phase limits exceeded: max 14 panels without battery, or 21 panels with battery.
+              Single-phase limits exceeded: max 11 panels without battery, or 14 panels with battery.
             </div>
           </div>
         )}
@@ -1539,7 +1578,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
   const tableRef = useRef<HTMLDivElement>(null);
   const [customerName, setCustomerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [showTenYearSavings, setShowTenYearSavings] = useState(true);
+  const [showTenYearSavings, setShowTenYearSavings] = useState(false);
   const [showTenYearGrossSavings, setShowTenYearGrossSavings] = useState(false);
   const [showNewImport, setShowNewImport] = useState(false);
   const [showNewExport, setShowNewExport] = useState(false);
@@ -1547,24 +1586,42 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
   const handleDownload = async () => {
     if (!tableRef.current) return;
 
+    const el = tableRef.current;
+
+    // Temporarily remove overflow clipping so html2canvas captures the full table
+    el.style.overflow = 'visible';
+    const innerOverflowEls = Array.from(el.querySelectorAll<HTMLElement>('[class*="overflow"]'));
+    const savedStyles = innerOverflowEls.map(e => e.style.overflow);
+    innerOverflowEls.forEach(e => { e.style.overflow = 'visible'; });
+
     try {
-      const canvas = await html2canvas(tableRef.current, {
-        scale: 2, // Reduced from 4 to avoid canvas size limits (causes black image)
+      const canvas = await html2canvas(el, {
+        scale: 4,
         backgroundColor: '#ffffff',
         useCORS: true,
+        allowTaint: true,
         logging: false,
-        // Ensure no scroll issues
         scrollX: 0,
         scrollY: 0,
-        windowWidth: tableRef.current.scrollWidth,
-        windowHeight: tableRef.current.scrollHeight
+        width: el.scrollWidth,
+        height: el.scrollHeight,
+        windowWidth: el.scrollWidth,
+        windowHeight: el.scrollHeight,
+        imageTimeout: 0,
       });
 
+      // Restore overflow styles
+      el.style.overflow = '';
+      innerOverflowEls.forEach((e, i) => { e.style.overflow = savedStyles[i]; });
+
       const link = document.createElement('a');
-      link.download = `Solar-Comparison-${new Date().toISOString().slice(0, 10)}.png`;
-      link.href = canvas.toDataURL('image/png');
+      link.download = `Solar-Comparison-${new Date().toISOString().slice(0, 10)}.jpg`;
+      link.href = canvas.toDataURL('image/jpeg', 0.95);
       link.click();
     } catch (err) {
+      // Always restore even on error
+      el.style.overflow = '';
+      innerOverflowEls.forEach((e, i) => { e.style.overflow = savedStyles[i]; });
       console.error("Failed to download image", err);
       alert("Failed to download image");
     }

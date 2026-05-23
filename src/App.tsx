@@ -63,6 +63,7 @@ const App = () => {
 
   const [aprilLaunchingPromo, setAprilLaunchingPromo] = useState(false);
   const [upgradeAutoBackupBox, setUpgradeAutoBackupBox] = useState(false);
+  const [suriaHomeRebate, setSuriaHomeRebate] = useState(false);
 
   const handleAprilLaunchingPromoChange = (value: boolean) => {
     setAprilLaunchingPromo(value);
@@ -158,9 +159,10 @@ const App = () => {
     const estimatedPhase = panelCount > 21 ? 'three' : 'single';
     return calculateSystemCost(panelCount, batteryCount, estimatedPhase, {
       aprilLaunchingPromo,
-      backupBoxUpgrade: upgradeAutoBackupBox
+      backupBoxUpgrade: upgradeAutoBackupBox,
+      suriaHomeRebate
     });
-  }, [panelCount, batteryCount, aprilLaunchingPromo, upgradeAutoBackupBox]);
+  }, [panelCount, batteryCount, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate]);
 
   const savingsPercent = simulation.originalBill.finalTotal > 0
     ? (simulation.monthlySavings / simulation.originalBill.finalTotal) * 100
@@ -353,6 +355,18 @@ const App = () => {
                 </span>
               </label>
             )}
+            <label className="flex items-start gap-2 cursor-pointer rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-100/95">
+              <input
+                type="checkbox"
+                checked={suriaHomeRebate}
+                onChange={e => setSuriaHomeRebate(e.target.checked)}
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-emerald-400/60 text-emerald-500 focus:ring-emerald-500"
+              />
+              <span className="leading-snug">
+                <span className="font-bold text-emerald-50">SuRIA Home RM3,000 Rebate</span>
+                <span className="block text-emerald-200/80 mt-0.5">Government rebate of RM3,000 — deducted from both cash &amp; CC price.</span>
+              </span>
+            </label>
           </div>
           {showInstallBtn && (
             <button
@@ -522,6 +536,20 @@ const App = () => {
                         </span>
                       </label>
                     )}
+                    <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-950">
+                      <input
+                        type="checkbox"
+                        checked={suriaHomeRebate}
+                        onChange={e => setSuriaHomeRebate(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-emerald-400 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span>
+                        <span className="font-bold">SuRIA Home RM3,000 Rebate</span>
+                        <span className="block text-xs text-emerald-800/90 mt-0.5">
+                          Government rebate of RM3,000 — deducted from both cash &amp; CC price on all systems.
+                        </span>
+                      </span>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -552,6 +580,12 @@ const App = () => {
                       <div className="flex justify-between items-center text-xs text-amber-800 bg-amber-50 rounded-lg px-2 py-1.5">
                         <span>April Launching Promo</span>
                         <span className="font-semibold">−RM {systemCost.aprilPromoDiscount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {typeof systemCost.suriaRebate === 'number' && systemCost.suriaRebate > 0 && (
+                      <div className="flex justify-between items-center text-xs text-emerald-800 bg-emerald-50 rounded-lg px-2 py-1.5">
+                        <span>SuRIA Home Rebate</span>
+                        <span className="font-semibold">−RM {systemCost.suriaRebate.toLocaleString()}</span>
                       </div>
                     )}
                     <div className="text-[10px] text-slate-400 pt-2 border-t border-slate-50 text-center">
@@ -661,6 +695,8 @@ const App = () => {
             onAprilLaunchingPromoChange={handleAprilLaunchingPromoChange}
             upgradeAutoBackupBox={upgradeAutoBackupBox}
             onUpgradeAutoBackupBoxChange={setUpgradeAutoBackupBox}
+            suriaHomeRebate={suriaHomeRebate}
+            onSuriaHomeRebateChange={setSuriaHomeRebate}
           />
         </div>
 

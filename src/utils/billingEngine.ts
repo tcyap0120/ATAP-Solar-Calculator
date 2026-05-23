@@ -271,6 +271,8 @@ export interface CalculateSystemCostOptions {
   aprilLaunchingPromo?: boolean;
   /** With April promo, 1+ batteries, and ticked: flat add-on to system cash/CC (not per battery). */
   backupBoxUpgrade?: boolean;
+  /** SuRIA Home government rebate: flat −RM3000 off both cash and CC price. */
+  suriaHomeRebate?: boolean;
 }
 
 /** Total RM discount (same amount subtracted from cash and CC) when April promo is active. */
@@ -428,6 +430,10 @@ export const calculateSystemCost = (
     cc -= aprilPromoDiscount;
   }
 
+  const suriaRebate = options?.suriaHomeRebate ? 3000 : 0;
+  cash -= suriaRebate;
+  cc -= suriaRebate;
+
   return {
     cash,
     cc,
@@ -437,6 +443,7 @@ export const calculateSystemCost = (
     originalInverter,
     upgradeCost,
     aprilPromoDiscount: options?.aprilLaunchingPromo ? aprilPromoDiscount : undefined,
-    backupBoxUpgradeRM: backupBoxUpgradeRM > 0 ? backupBoxUpgradeRM : undefined
+    backupBoxUpgradeRM: backupBoxUpgradeRM > 0 ? backupBoxUpgradeRM : undefined,
+    suriaRebate: suriaRebate > 0 ? suriaRebate : undefined
   };
 };
