@@ -355,21 +355,29 @@ const CommercialResiPage: React.FC = () => {
   ]);
 
   const handleDownloadImage = async () => {
-      if (proposalRef.current) {
-          try {
-              const canvas = await html2canvas(proposalRef.current, {
-                  scale: 2, // Better quality
-                  backgroundColor: '#ffffff',
-              });
-              const image = canvas.toDataURL('image/jpeg', 0.9);
-              const link = document.createElement('a');
-              link.href = image;
-              link.download = `SolarProposal_${new Date().toISOString().slice(0,10)}.jpg`;
-              link.click();
-          } catch (error) {
-              console.error("Image generation failed:", error);
-              alert("Could not generate image.");
-          }
+      if (!proposalRef.current) return;
+
+      try {
+          const el = proposalRef.current;
+          const canvas = await html2canvas(el, {
+              scale: 2,
+              backgroundColor: '#ffffff',
+              useCORS: true,
+              scrollX: 0,
+              scrollY: 0,
+              width: el.scrollWidth,
+              height: el.scrollHeight,
+              windowWidth: el.scrollWidth,
+              windowHeight: el.scrollHeight,
+          });
+          const image = canvas.toDataURL('image/jpeg', 0.9);
+          const link = document.createElement('a');
+          link.href = image;
+          link.download = `SolarProposal_${new Date().toISOString().slice(0,10)}.jpg`;
+          link.click();
+      } catch (error) {
+          console.error("Image generation failed:", error);
+          alert("Could not generate image.");
       }
   };
 

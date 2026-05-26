@@ -80,7 +80,8 @@ const calculateScenario = (
     isUpgraded: costs.isUpgraded,
     upgradeCost: costs.upgradeCost,
     originalInverterSize: costs.originalInverter,
-    exportCreditValue: sim.newBill.exportCredit || 0
+    exportCreditValue: sim.newBill.exportCredit || 0,
+    suriaRebate: costs.suriaRebate
   };
 };
 
@@ -441,7 +442,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       msg +=
         lang === 'zh'
           ? `⏰ 限时优惠仅限至 2026年5月30日！\n\n`
-          : `⏰ Limited promo until 15th May 2026 only!\n\n`;
+          : `⏰ Limited promo until 30th May 2026 only!\n\n`;
     }
 
 
@@ -470,9 +471,10 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       msg += `☀️ ${lang === 'zh' ? '方案' : 'Plan'} ${index + 1}：${plan.title}\n\n`;
       msg += `${lang === 'zh' ? '系统配置' : 'System Size'}： *${r.panels} ${lang === 'zh' ? '片太阳能板' : 'Panels'} ${kwp} kWp ${batStr}*\n`;
 
-      // When SuRIA rebate is active the stored prices already have -3000; show pre-rebate first, then after-rebate.
-      const ccBeforeRebate = suriaHomeRebate ? r.systemCostCC + 3000 : r.systemCostCC;
-      const cashBeforeRebate = suriaHomeRebate ? r.systemCostCash + 3000 : r.systemCostCash;
+      // When SuRIA rebate is active the stored prices already have the rebate deducted; show pre-rebate first, then after-rebate.
+      const suriaRebateAmt = r.suriaRebate ?? 3000;
+      const ccBeforeRebate = suriaHomeRebate ? r.systemCostCC + suriaRebateAmt : r.systemCostCC;
+      const cashBeforeRebate = suriaHomeRebate ? r.systemCostCash + suriaRebateAmt : r.systemCostCash;
 
       if (lang === 'zh') {
         msg += `📌每月预计节省电费：约 RM${roundedMonthlySavings}+-\n`;
@@ -480,8 +482,8 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
         msg += `📌早鸟优惠价：RM${ccBeforeRebate.toLocaleString()}（可零利息分期付款36个月）\n`;
         msg += `📌早鸟现金优惠价：RM${cashBeforeRebate.toLocaleString()}\n`;
         if (suriaHomeRebate) {
-          msg += `\n🎉RM3000津贴后价格: *RM${r.systemCostCC.toLocaleString()}*\n`;
-          msg += `💰RM3000津贴后现金价: *RM${r.systemCostCash.toLocaleString()}*\n`;
+          msg += `\n🎉RM${suriaRebateAmt.toLocaleString()}津贴后价格: *RM${r.systemCostCC.toLocaleString()}*\n`;
+          msg += `💰RM${suriaRebateAmt.toLocaleString()}津贴后现金价: *RM${r.systemCostCash.toLocaleString()}*\n`;
         }
         msg += `📌预计回本期：${r.paybackYearsCash.toFixed(1)} - ${r.paybackYearsCC.toFixed(1)}年\n\n`;
       } else {
@@ -490,8 +492,8 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
         msg += `📌Promo Price: RM${ccBeforeRebate.toLocaleString()} (0% Interest / 36m)\n`;
         msg += `📌Cash Price: RM${cashBeforeRebate.toLocaleString()}\n`;
         if (suriaHomeRebate) {
-          msg += `\n🎉After RM3,000 Rebate (CC): *RM${r.systemCostCC.toLocaleString()}*\n`;
-          msg += `💰After RM3,000 Rebate (Cash): *RM${r.systemCostCash.toLocaleString()}*\n`;
+          msg += `\n🎉After RM${suriaRebateAmt.toLocaleString()} Rebate (CC): *RM${r.systemCostCC.toLocaleString()}*\n`;
+          msg += `💰After RM${suriaRebateAmt.toLocaleString()} Rebate (Cash): *RM${r.systemCostCash.toLocaleString()}*\n`;
         }
         msg += `📌Est. ROI Period: ${r.paybackYearsCash.toFixed(1)} - ${r.paybackYearsCC.toFixed(1)} Years\n\n`;
       }
@@ -1277,26 +1279,60 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   // Input Handlers
   const handlePanelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    if (val === '') setPanels('');
-    else setPanels(parseInt(val));
+    if (val === '') {
+      setPanels('');
+    } else {
+      const parsed = parseInt(val);
+      setPanels(parsed);
+      if (onUpdate && !isNaN(parsed) && parsed >= 6) {
+        const b = typeof batteries === 'number' ? batteries : 0;
+        const newRes = calculateScenario(parsed, b, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate);
+        if (newRes) onUpdate(id, newRes);
+      }
+    }
   };
 
   const handleBatteryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    if (val === '') setBatteries('');
-    else setBatteries(parseInt(val));
+    if (val === '') {
+      setBatteries('');
+    } else {
+      const parsed = parseInt(val);
+      setBatteries(parsed);
+      if (onUpdate && !isNaN(parsed) && parsed >= 0) {
+        const p = typeof panels === 'number' ? panels : 0;
+        const newRes = calculateScenario(p, parsed, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate);
+        if (newRes) onUpdate(id, newRes);
+      }
+    }
   };
 
   const changePanels = (delta: number) => {
     const current = typeof panels === 'number' ? panels : 0;
     const newVal = current + delta;
-    if (newVal >= 6 && newVal <= 60) setPanels(newVal);
+    if (newVal >= 6 && newVal <= 60) {
+      setPanels(newVal);
+      // Eagerly update editedPlans so WhatsApp message is always in sync,
+      // even if the user clicks Whatsapp before the async recalculation effect fires.
+      if (onUpdate) {
+        const b = typeof batteries === 'number' ? batteries : 0;
+        const newRes = calculateScenario(newVal, b, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate);
+        if (newRes) onUpdate(id, newRes);
+      }
+    }
   };
 
   const changeBatteries = (delta: number) => {
     const current = typeof batteries === 'number' ? batteries : 0;
     const newVal = current + delta;
-    if (newVal >= 0 && newVal <= 20) setBatteries(newVal);
+    if (newVal >= 0 && newVal <= 20) {
+      setBatteries(newVal);
+      if (onUpdate) {
+        const p = typeof panels === 'number' ? panels : 0;
+        const newRes = calculateScenario(p, newVal, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate);
+        if (newRes) onUpdate(id, newRes);
+      }
+    }
   };
 
   const isExportHigh = result.newExportKwh > result.newImportKwh;
@@ -1588,44 +1624,64 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
   const handleDownload = async () => {
     if (!tableRef.current) return;
 
-    const el = tableRef.current;
+    const original = tableRef.current;
 
-    // Temporarily remove overflow clipping so html2canvas captures the full table
-    el.style.overflow = 'visible';
-    const innerOverflowEls = Array.from(el.querySelectorAll<HTMLElement>('[class*="overflow"]'));
-    const savedStyles = innerOverflowEls.map(e => e.style.overflow);
-    innerOverflowEls.forEach(e => { e.style.overflow = 'visible'; });
+    // Clone the element and attach to body so html2canvas sees it outside
+    // the modal's max-height / overflow-y-auto / overflow-hidden ancestors.
+    const clone = original.cloneNode(true) as HTMLElement;
+    Object.assign(clone.style, {
+      position: 'fixed',
+      left: '-99999px',
+      top: '0px',
+      overflow: 'visible',
+      width: original.scrollWidth + 'px',
+      maxWidth: 'none',
+      height: 'auto',
+      maxHeight: 'none',
+      zIndex: '-1',
+      pointerEvents: 'none',
+      transform: 'none',
+    });
+    // Strip overflow clipping from every descendant inside the clone
+    clone.querySelectorAll<HTMLElement>('*').forEach(e => {
+      e.style.overflow = 'visible';
+      e.style.maxHeight = 'none';
+    });
+
+    document.body.appendChild(clone);
+
+    // Two animation frames so the browser fully lays out the clone
+    await new Promise(r => requestAnimationFrame(r));
+    await new Promise(r => requestAnimationFrame(r));
+
+    const captureW = clone.scrollWidth;
+    const captureH = clone.scrollHeight;
 
     try {
-      const canvas = await html2canvas(el, {
-        scale: 4,
+      const canvas = await html2canvas(clone, {
+        scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
         logging: false,
         scrollX: 0,
         scrollY: 0,
-        width: el.scrollWidth,
-        height: el.scrollHeight,
-        windowWidth: el.scrollWidth,
-        windowHeight: el.scrollHeight,
-        imageTimeout: 0,
+        width: captureW,
+        height: captureH,
+        windowWidth: captureW + 200,
+        windowHeight: captureH + 200,
+        imageTimeout: 15000,
       });
-
-      // Restore overflow styles
-      el.style.overflow = '';
-      innerOverflowEls.forEach((e, i) => { e.style.overflow = savedStyles[i]; });
 
       const link = document.createElement('a');
       link.download = `Solar-Comparison-${new Date().toISOString().slice(0, 10)}.jpg`;
       link.href = canvas.toDataURL('image/jpeg', 0.95);
       link.click();
     } catch (err) {
-      // Always restore even on error
-      el.style.overflow = '';
-      innerOverflowEls.forEach((e, i) => { e.style.overflow = savedStyles[i]; });
-      console.error("Failed to download image", err);
-      alert("Failed to download image");
+      console.error('Failed to download image', err);
+      alert('Failed to download image. Please try again.');
+    } finally {
+      document.body.removeChild(clone);
     }
   };
 
@@ -1939,8 +1995,9 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
                   {data.map((item, idx) => {
                     const ccAfter = item.data.systemCostCC;
                     const cashAfter = item.data.systemCostCash;
-                    const ccBefore = suriaHomeRebate ? ccAfter + 3000 : ccAfter;
-                    const cashBefore = suriaHomeRebate ? cashAfter + 3000 : cashAfter;
+                    const rebateAmt = item.data.suriaRebate ?? 3000;
+                    const ccBefore = suriaHomeRebate ? ccAfter + rebateAmt : ccAfter;
+                    const cashBefore = suriaHomeRebate ? cashAfter + rebateAmt : cashAfter;
                     return (
                       <td key={idx} className="p-2 sm:p-4 align-top">
                         <div className="space-y-3 sm:space-y-4">
@@ -1980,8 +2037,8 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
                 <Info size={14} className="text-emerald-600 shrink-0 mt-0.5" />
                 <span>
                   {language === 'zh'
-                    ? '以上价格已包含 RM3,000 SuRIA Home 政府津贴。该 RM3,000 津贴将由 TNB 直接转账至客户银行账户。'
-                    : 'Prices shown are after the RM3,000 SuRIA Home government rebate. The RM3,000 will be transferred directly to the client\'s bank account by TNB.'}
+                    ? `以上价格已包含 SuRIA Home 政府津贴。该津贴将由 TNB 直接转账至客户银行账户。`
+                    : `Prices shown are after the SuRIA Home government rebate. The rebate will be transferred directly to the client's bank account by TNB.`}
                 </span>
               </div>
             )}

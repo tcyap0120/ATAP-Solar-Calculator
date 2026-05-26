@@ -430,7 +430,9 @@ export const calculateSystemCost = (
     cc -= aprilPromoDiscount;
   }
 
-  const suriaRebate = options?.suriaHomeRebate ? 3000 : 0;
+  const suriaRebate = options?.suriaHomeRebate
+    ? (phase === 'single' && (panels === 6 || panels === 7) ? 1800 : 3000)
+    : 0;
   cash -= suriaRebate;
   cc -= suriaRebate;
 

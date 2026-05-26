@@ -547,10 +547,34 @@ const CalculatorPage: React.FC = () => {
     const requiredPanelsA = Math.ceil(requiredKwpA / settings.panelRating);
     const finalPanelsA = Math.min(requiredPanelsA, absoluteMaxPanelsA);
     const planACandidate = calcPlanDetails(finalPanelsA * settings.panelRating);
-    // Walk backwards to find the minimum panels that achieve the same rounded savings
-    const peakSavings = Math.round(planACandidate.estOffset);
+    // Walk backwards to find the minimum panels that achieve the same actual bill savings.
+    // Uses the real consumption-aware calculation: direct use is capped by consumption during
+    // solar hours (not 100% as the simplified weightedRate assumes), and usable export is capped
+    // by remaining import. Both caps saturate before the raw generation revenue does, so using
+    // estOffset (which grows monotonically) would never walk back at all.
+    const calcActualBillSavings = (kwp: number): number => {
+        const mg = kwp * sunHours * 30;
+        const dailyG = mg / 30;
+        const sSt = settings.solarStartHour || 10;
+        const sEn = settings.solarEndHour || 17;
+        const solDur = Math.max(0.1, sEn - sSt);
+        const ovSt = Math.max(sSt, opStartHour);
+        const ovEn = Math.min(sEn, opEndHour);
+        const ovDur = Math.max(0, ovEn - ovSt);
+        const opDur = Math.max(0.1, opEndHour - opStartHour);
+        const safeAct = activeDays > 0 ? activeDays : 1;
+        const dailyActiveCons = consumptionKwh / safeAct;
+        const dailyDirect = Math.min(dailyG * (ovDur / solDur), dailyActiveCons * (ovDur / opDur));
+        const monthlyDirect = dailyDirect * activeDays;
+        const dailyExcess = dailyG * (ovDur / solDur) - dailyDirect;
+        const monthlyExport = dailyExcess * activeDays + dailyG * daysNoLoad;
+        const monthlyNewImport = Math.max(0, consumptionKwh - monthlyDirect);
+        const monthlyUsableExport = Math.min(monthlyExport, monthlyNewImport);
+        return monthlyDirect * effectiveImportTariff + monthlyUsableExport * exportRate;
+    };
+    const peakSavings = Math.round(calcActualBillSavings(finalPanelsA * settings.panelRating));
     let minPanelsA = finalPanelsA;
-    while (minPanelsA > 1 && Math.round(calcPlanDetails((minPanelsA - 1) * settings.panelRating).estOffset) >= peakSavings) {
+    while (minPanelsA > 1 && Math.round(calcActualBillSavings((minPanelsA - 1) * settings.panelRating)) >= peakSavings) {
         minPanelsA--;
     }
     const planA = minPanelsA < finalPanelsA ? calcPlanDetails(minPanelsA * settings.panelRating) : planACandidate;

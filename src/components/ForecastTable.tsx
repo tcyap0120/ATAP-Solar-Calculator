@@ -220,13 +220,21 @@ export const ForecastTable: React.FC<ForecastTableProps> = ({
 
   const handleDownload = async () => {
       if (!tableRef.current) return;
-      
+
       try {
-          const canvas = await html2canvas(tableRef.current, {
+          const el = tableRef.current;
+          const canvas = await html2canvas(el, {
               scale: 2,
-              backgroundColor: '#ffffff'
+              backgroundColor: '#ffffff',
+              useCORS: true,
+              scrollX: 0,
+              scrollY: 0,
+              width: el.scrollWidth,
+              height: el.scrollHeight,
+              windowWidth: el.scrollWidth,
+              windowHeight: el.scrollHeight,
           });
-          
+
           const link = document.createElement('a');
           link.download = `Solar-Forecast-${new Date().toISOString().slice(0,10)}.png`;
           link.href = canvas.toDataURL('image/png');

@@ -78,4 +78,5 @@ export interface RecommendationResult {
   upgradeCost?: number;
   originalInverterSize?: string;
   exportCreditValue?: number;
+  suriaRebate?: number;
 }
