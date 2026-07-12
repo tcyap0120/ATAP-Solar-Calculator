@@ -52,7 +52,7 @@ function formatMaintenanceWhatsAppLine(r: CalculationResult, lang: 'zh' | 'en'):
   if (!d || d.cost <= 0) return null;
   if (lang === 'zh') {
     const cadence = d.freq <= 1 ? '每年一次' : `每${d.freq}年一次`;
-    return `- 维修费： RM ${fmt(d.cost)}（${cadence}）`;
+    return `* 维修费： RM ${fmt(d.cost)}（建议${cadence}）`;
   }
   if (d.freq <= 1) {
     return `- Maintenance: RM ${fmt(d.cost)} (once per year)`;
@@ -66,11 +66,23 @@ function buildShareText(data: CommercialWhatsAppModalData, lang: 'zh' | 'en'): s
   const fmt2 = (n: number) =>
     n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const monthlySavings = r.annualSavings / 12;
-  const annualSavings = r.annualSavings;
+  // Match the calculator card's "Monthly Savings" headline = gross bill savings
+  // (self-consumption + export), excluding the ATAP "extra" value.
+  const monthlyDisplaySavings = (r.savingsFromSelfConsumption + r.savingsFromExport) / 12;
+  // Round monthly savings down to the nearest RM10; annual = rounded monthly × 12.
+  const monthlySavingsRounded = Math.floor(monthlyDisplaySavings / 10) * 10;
+  const annualSavingsRounded = monthlySavingsRounded * 12;
   const billNum = parseFloat(data.billAmount);
+  // Bill-reduction % matches the card (gross savings incl. ATAP value = annualSavings / 12).
   const savingsPct =
-    !isNaN(billNum) && billNum > 0 ? (monthlySavings / billNum) * 100 : 0;
+    !isNaN(billNum) && billNum > 0 ? (r.annualSavings / 12 / billNum) * 100 : 0;
+
+  // Final prices for the WhatsApp quote (commercial):
+  //   Final price after SST = System Price (gross) × 1.012
+  //   Net price after CA     = System Price (gross) × 1.012 × (1 − tax rate)   [= ×0.76 at 24%]
+  const SST_MULTIPLIER = 1.012;
+  const priceAfterSST = r.totalPrice * SST_MULTIPLIER;
+  const netPriceAfterCA = r.totalPrice * SST_MULTIPLIER * (1 - data.taxRate);
 
   const daysNoLoad = parseFloat(data.noLoadDays) || 0;
   const operatingDaysPerMonth = Math.max(0, 30 - daysNoLoad);
@@ -102,11 +114,12 @@ function buildShareText(data: CommercialWhatsAppModalData, lang: 'zh' | 'en'): s
       `* 逆变器: ${data.brandName || '—'}`,
       ``,
       `💰 *投资与回报*`,
-      `* 每月预计节省电费: RM ${fmt2(monthlySavings)} (${savingsPct.toFixed(1)}%)`,
-      `* 每年预计节省电费: RM ${fmt2(annualSavings)}`,
-      `* 系统价格: RM ${fmt(r.totalPrice)}`,
+      `* 每月预计节省电费: RM ${fmt(monthlySavingsRounded)}+- (${savingsPct.toFixed(1)}%)`,
+      `* 每年预计节省电费: RM ${fmt(annualSavingsRounded)}+-`,
+      `* 系统价格 (未含税): RM ${fmt(r.totalPrice)}`,
+      `* 含SST最终价格: RM ${fmt(priceAfterSST)}`,
       `* 回本期: 约 ${r.roiYearsNoTax.toFixed(2)} 年`,
-      `* 扣税后价格 (CA): RM ${fmt(r.priceAfterCA)}`,
+      `* 扣税后价格 (CA): RM ${fmt(netPriceAfterCA)}`,
       `* 回本期 (扣税后): 约 ${r.roiYearsCA.toFixed(2)} 年`,
       ``,
       `⚙️ *维护开销*`,
@@ -134,11 +147,12 @@ function buildShareText(data: CommercialWhatsAppModalData, lang: 'zh' | 'en'): s
     `* Inverter: ${data.brandName || '—'}`,
     ``,
     `💰 *Investment & Returns*`,
-    `* Est. monthly bill savings: RM ${fmt2(monthlySavings)} (${savingsPct.toFixed(1)}%)`,
-    `* Est. annual bill savings: RM ${fmt2(annualSavings)}`,
-    `* System price: RM ${fmt(r.totalPrice)}`,
+    `* Est. monthly bill savings: RM ${fmt(monthlySavingsRounded)}+- (${savingsPct.toFixed(1)}%)`,
+    `* Est. annual bill savings: RM ${fmt(annualSavingsRounded)}+-`,
+    `* System price (excl. tax): RM ${fmt(r.totalPrice)}`,
+    `* Final price (incl. SST): RM ${fmt(priceAfterSST)}`,
     `* Payback: ~${r.roiYearsNoTax.toFixed(2)} yr`,
-    `* Price after CA (net of tax): RM ${fmt(r.priceAfterCA)}`,
+    `* Price after CA (net of tax): RM ${fmt(netPriceAfterCA)}`,
     `* Payback (after CA): ~${r.roiYearsCA.toFixed(2)} yr`,
     ``,
     `⚙️ *Operating Cost*`,

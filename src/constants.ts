@@ -48,8 +48,11 @@ export const DISCOUNT_TABLE: DiscountBlock[] = [
 export const BATTERY_COST_CASH = 8200;
 export const BATTERY_COST_CC = 8950;
 
-/** Three-phase systems with 12–13 panels: inverter 5 kWac → 8 kWac (+same RM on cash & CC). */
-export const THREE_PHASE_12_13_INVERTER_UPGRADE_TO_8KW_RM = 150;
+/** Three-phase inverter auto-upgrade costs (added to both cash & CC). */
+export const THREE_PHASE_INVERTER_UPGRADE_5_TO_8KW_RM = 500;   // panels 11–14
+export const THREE_PHASE_INVERTER_UPGRADE_8_TO_10KW_RM = 300;  // panels 18–21
+export const THREE_PHASE_INVERTER_UPGRADE_10_TO_12KW_RM = 600; // panels 22–26
+export const THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM = 800; // panels 27–32
 
 /** April Launching Promo — same total RM discount subtracted from both cash and CC. */
 /** With 1+ batteries: system discount on cash & CC. */
@@ -72,9 +75,9 @@ export const SYSTEM_PRICING: PricingTier[] = [
   { panels: 9, kwp: 5.76, inverterSize: "5 kWac Single Phase", cashPrice: 17840, ccPrice: 19500, cashPriceWithBattery: 19440, ccPriceWithBattery: 21250, threePhaseCashPrice: 21400, threePhaseCcPrice: 23400, threePhaseCashPriceWithBattery: 23900, threePhaseCcPriceWithBattery: 26150, threePhaseInverterSize: "5 kWac Three Phase" },
   { panels: 10, kwp: 6.4, inverterSize: "5 kWac Single Phase", cashPrice: 18390, ccPrice: 20100, cashPriceWithBattery: 19990, ccPriceWithBattery: 21850, threePhaseCashPrice: 22000, threePhaseCcPrice: 24050, threePhaseCashPriceWithBattery: 24500, threePhaseCcPriceWithBattery: 26800, threePhaseInverterSize: "5 kWac Three Phase" },
   { panels: 11, kwp: 7.04, inverterSize: "5 kWac Single Phase", cashPrice: 19100, ccPrice: 20900, cashPriceWithBattery: 20700, ccPriceWithBattery: 22650, threePhaseCashPrice: 22600, threePhaseCcPrice: 24700, threePhaseCashPriceWithBattery: 25100, threePhaseCcPriceWithBattery: 27450, threePhaseInverterSize: "5 kWac Three Phase" },
-  { panels: 12, kwp: 7.68, inverterSize: "5 kWac Single Phase", cashPrice: 19650, ccPrice: 21500, cashPriceWithBattery: 21250, ccPriceWithBattery: 23250, threePhaseCashPrice: 23500, threePhaseCcPrice: 25700, threePhaseCashPriceWithBattery: 26000, threePhaseCcPriceWithBattery: 28450, threePhaseInverterSize: "8 kWac Three Phase" },
-  { panels: 13, kwp: 8.32, inverterSize: "5 kWac Single Phase", cashPrice: 20450, ccPrice: 22350, cashPriceWithBattery: 22050, ccPriceWithBattery: 24100, threePhaseCashPrice: 23950, threePhaseCcPrice: 26200, threePhaseCashPriceWithBattery: 26450, threePhaseCcPriceWithBattery: 28950, threePhaseInverterSize: "8 kWac Three Phase" },
-  { panels: 14, kwp: 8.96, inverterSize: "5 kWac Single Phase", cashPrice: 21550, ccPrice: 23600, cashPriceWithBattery: 23150, ccPriceWithBattery: 25350, threePhaseCashPrice: 25050, threePhaseCcPrice: 27400, threePhaseCashPriceWithBattery: 27550, threePhaseCcPriceWithBattery: 30150, threePhaseInverterSize: "8 kWac Three Phase" },
+  { panels: 12, kwp: 7.68, inverterSize: "5 kWac Single Phase", cashPrice: 19650, ccPrice: 21500, cashPriceWithBattery: 21250, ccPriceWithBattery: 23250, threePhaseCashPrice: 23700, threePhaseCcPrice: 25700, threePhaseCashPriceWithBattery: 26000, threePhaseCcPriceWithBattery: 28450, threePhaseInverterSize: "8 kWac Three Phase" },
+  { panels: 13, kwp: 8.32, inverterSize: "5 kWac Single Phase", cashPrice: 20450, ccPrice: 22350, cashPriceWithBattery: 22050, ccPriceWithBattery: 24100, threePhaseCashPrice: 24300, threePhaseCcPrice: 26200, threePhaseCashPriceWithBattery: 26450, threePhaseCcPriceWithBattery: 28950, threePhaseInverterSize: "8 kWac Three Phase" },
+  { panels: 14, kwp: 8.96, inverterSize: "5 kWac Single Phase", cashPrice: 21550, ccPrice: 23600, cashPriceWithBattery: 23100, ccPriceWithBattery: 25250, threePhaseCashPrice: 25050, threePhaseCcPrice: 27400, threePhaseCashPriceWithBattery: 27550, threePhaseCcPriceWithBattery: 30150, threePhaseInverterSize: "8 kWac Three Phase" },
   { panels: 15, kwp: 9.6, inverterSize: "8 kWac Single Phase", cashPrice: 25000, ccPrice: 27350, cashPriceWithBattery: 26600, ccPriceWithBattery: 29100, threePhaseCashPrice: 26520, threePhaseCcPrice: 29000, threePhaseCashPriceWithBattery: 29020, threePhaseCcPriceWithBattery: 31750, threePhaseInverterSize: "8 kWac Three Phase" },
   { panels: 16, kwp: 10.24, inverterSize: "8 kWac Single Phase", cashPrice: 25400, ccPrice: 27800, cashPriceWithBattery: 27000, ccPriceWithBattery: 29550, threePhaseCashPrice: 27620, threePhaseCcPrice: 30200, threePhaseCashPriceWithBattery: 30120, threePhaseCcPriceWithBattery: 32950, threePhaseInverterSize: "8 kWac Three Phase" },
   { panels: 17, kwp: 10.88, inverterSize: "8 kWac Single Phase", cashPrice: 25800, ccPrice: 28200, cashPriceWithBattery: 27400, ccPriceWithBattery: 29950, threePhaseCashPrice: 28720, threePhaseCcPrice: 31400, threePhaseCashPriceWithBattery: 31220, threePhaseCcPriceWithBattery: 34150, threePhaseInverterSize: "8 kWac Three Phase" },

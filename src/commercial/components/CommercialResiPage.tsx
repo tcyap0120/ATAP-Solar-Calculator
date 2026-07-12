@@ -63,6 +63,12 @@ const CommercialResiPage: React.FC = () => {
   const [selectedFormulaDaytime, setSelectedFormulaDaytime] = useState(true);
   const [selectedFormulaBess, setSelectedFormulaBess] = useState(true);
 
+  // --- Formula plan manual overrides (null = follow formula) ---
+  const [daytimePanelsOverride, setDaytimePanelsOverride] = useState<number | null>(null);
+  const [daytimeBatteryOverride, setDaytimeBatteryOverride] = useState<number | null>(null);
+  const [bessPanelsOverride, setBessPanelsOverride] = useState<number | null>(null);
+  const [bessBatteryOverride, setBessBatteryOverride] = useState<number | null>(null);
+
   const [isWAModalOpen, setIsWAModalOpen] = useState(false);
   const [proposalLang, setProposalLang] = useState<'zh' | 'en'>('zh');
   const proposalRef = useRef<HTMLDivElement>(null);
@@ -73,6 +79,9 @@ const CommercialResiPage: React.FC = () => {
   const tariffRate = activeGroup.rate;
   const kwtbbPct = (activeGroup.kwtbbPct || 1.6) / 100;
   const fixedCharge = 20.00;
+
+  /** Round a savings figure down to the nearest multiple of ten for proposal display. */
+  const roundDownTen = (n: number) => Math.floor(n / 10) * 10;
 
   // Initialize Bill on Mount based on default Usage
   useEffect(() => {
@@ -163,7 +172,10 @@ const CommercialResiPage: React.FC = () => {
     const monthlySavings = originalGrandTotal - newGrandTotal;
     const savingsPct = (monthlySavings / originalGrandTotal) * 100;
 
-    // 9. System price — GoodWe (Hybrid) + Ref Rates, same rules as commercial Recommender (CalculatorPage)
+    // 9. System price (excluding battery) — Commercial Hybrid (GoodWe) tiered rates.
+    //    < 26 kWp   : follow residential calculator price (Ref Rates), no discount.
+    //    26–30 kWp  : RM1,975 / kWp (hybrid inverter).
+    //    ≥ 30 kWp   : RM1,800 / kWp (30–100 hybrid rate, reused for 100+ hybrid systems).
     const unitPrice = settings.battery?.pricePerUnit ?? 8200;
     const batteryCostCash = bQty * unitPrice;
     const batteryCostCC = bQty * Math.round(unitPrice * 1.093);
@@ -173,43 +185,29 @@ const CommercialResiPage: React.FC = () => {
       oneTimeFees += settings.otherCosts.gitaFee;
     }
 
+    const CC_MULTIPLIER = 1.093;
     let priceCash = 0;
     let priceCc = 0;
 
-    if (goodWeBrand?.id === 'goodwe' && goodWeBrand.pricingTiers?.length) {
-      const tier =
-        goodWeBrand.pricingTiers.find((t) => solarSize >= t.minKw && solarSize < t.maxKw) ??
-        goodWeBrand.pricingTiers[goodWeBrand.pricingTiers.length - 1];
-
-      if (tier.useSmartLogic && settings.referencePrices) {
-        const panelCount = Math.round(pQty || solarSize / settings.panelRating);
-        const ref = settings.referencePrices.find((r) => r.panels === panelCount);
-        const basePrice = ref ? ref.price : tier.pricePerKw * solarSize;
-        const baseCc = ref ? (ref.priceCC36 ?? ref.price * 1.093) : basePrice * 1.093;
-        priceCash = basePrice + tier.baseFee;
-        priceCc = baseCc + tier.baseFee;
-      } else {
-        priceCash = tier.pricePerKw * solarSize + tier.baseFee;
+    if (solarSize < 26) {
+      // Follow residential calculator price (Ref Rates), no discount applied.
+      const panelCount = Math.round(pQty || solarSize / settings.panelRating);
+      const refs = settings.referencePrices ?? [];
+      let ref = refs.find((r) => r.panels === panelCount);
+      if (!ref && refs.length) {
+        // No exact panel-count match: use the nearest available reference entry.
+        ref = refs.reduce((best, r) =>
+          Math.abs(r.panels - panelCount) < Math.abs(best.panels - panelCount) ? r : best
+        );
       }
-
-      if (tier.deductionPerKw) {
-        const ded = tier.deductionPerKw * solarSize;
-        priceCash -= ded;
-        if (tier.useSmartLogic && settings.referencePrices) {
-          priceCc -= ded;
-        }
-      }
-
-      if (!(tier.useSmartLogic && settings.referencePrices)) {
-        priceCc = priceCash * 1.093;
-      }
-    } else {
-      const ref = settings.referencePrices?.find((r) => r.panels === pQty);
-      const fallbackBase = solarSize * 2500;
-      const baseCash = ref ? ref.price : fallbackBase;
-      const baseCc = ref ? (ref.priceCC36 ?? ref.price * 1.093) : fallbackBase * 1.093;
+      const baseCash = ref ? ref.price : solarSize * 1975; // fallback near low-tier hybrid rate
       priceCash = baseCash;
-      priceCc = baseCc;
+      priceCc = ref ? (ref.priceCC36 ?? baseCash * CC_MULTIPLIER) : baseCash * CC_MULTIPLIER;
+    } else {
+      // Hybrid per-kWp rate. 26–30 kWp = RM1,975; 30+ kWp = RM1,800 (also covers 100+ hybrid).
+      const ratePerKw = solarSize < 30 ? 1975 : 1800;
+      priceCash = ratePerKw * solarSize;
+      priceCc = priceCash * CC_MULTIPLIER;
     }
 
     const totalPrice = priceCash + oneTimeFees + batteryCostCash;
@@ -285,16 +283,34 @@ const CommercialResiPage: React.FC = () => {
       daytime: {
         id: 'formula-daytime',
         label: 'Daytime Coverage',
-        panels: clampPanels(p1Raw),
-        batteryQty: 0,
+        panels: daytimePanelsOverride ?? clampPanels(p1Raw),
+        batteryQty: daytimeBatteryOverride ?? 0,
       },
       bess: {
         id: 'formula-bess',
         label: 'BESS Coverage',
-        panels: clampPanels(p2Raw),
-        batteryQty: batteries,
+        panels: bessPanelsOverride ?? clampPanels(p2Raw),
+        batteryQty: bessBatteryOverride ?? batteries,
       },
     };
+  }, [
+    usageKwh,
+    daytimePercent,
+    settings.panelRating,
+    settings.battery,
+    formulaPanelCap,
+    daytimePanelsOverride,
+    daytimeBatteryOverride,
+    bessPanelsOverride,
+    bessBatteryOverride,
+  ]);
+
+  // When the underlying inputs change, drop manual overrides so the formula re-derives.
+  useEffect(() => {
+    setDaytimePanelsOverride(null);
+    setDaytimeBatteryOverride(null);
+    setBessPanelsOverride(null);
+    setBessBatteryOverride(null);
   }, [usageKwh, daytimePercent, settings.panelRating, settings.battery, formulaPanelCap]);
 
   const selectedPlansForWA = useMemo(() => {
@@ -472,9 +488,9 @@ const CommercialResiPage: React.FC = () => {
                    Resi-Style Calculator
                 </h1>
                 <p className="text-slate-500 font-medium text-sm mt-1">
-                  Commercial · residential-style usage model. System price uses{' '}
-                  <span className="font-semibold text-slate-700">GoodWe (Hybrid)</span> tier rules and{' '}
-                  <span className="font-semibold text-slate-700">Ref Rates</span> (residential three-phase with-battery tier), same as the main Recommender.
+                  Commercial · residential-style usage model. System price (excl. battery) uses{' '}
+                  <span className="font-semibold text-slate-700">GoodWe Hybrid</span> tiers:{' '}
+                  &lt;26 kWp = residential Ref Rates (no discount), 26–30 kWp = RM1,975/kWp, ≥30 kWp = RM1,800/kWp.
                 </p>
             </div>
             
@@ -749,6 +765,18 @@ const CommercialResiPage: React.FC = () => {
               ].map(({ key, config, selected, setSelected }) => {
                 const metrics = calculateMetrics(config.panels, config.batteryQty, usageKwh);
                 const isExpanded = expandedCardId === `formula-${key}`;
+                const setPanelsOverride = key === 'daytime' ? setDaytimePanelsOverride : setBessPanelsOverride;
+                const setBatteryOverride = key === 'daytime' ? setDaytimeBatteryOverride : setBessBatteryOverride;
+                const handleOverrideChange = (
+                  setter: (v: number | null) => void,
+                  raw: string
+                ) => {
+                  if (raw.trim() === '') {
+                    setter(null); // revert to formula value
+                    return;
+                  }
+                  setter(Math.max(0, parseInt(raw, 10) || 0));
+                };
                 return (
                   <div
                     key={key}
@@ -792,9 +820,16 @@ const CommercialResiPage: React.FC = () => {
                             selected ? 'bg-white/40 border-white/20' : 'bg-slate-50 border-slate-100'
                           }`}
                         >
-                          <div className="flex flex-col">
+                          <div className="flex flex-col w-full">
                             <span className="text-[9px] font-bold text-slate-500 uppercase">Panels</span>
-                            <span className="text-sm font-black text-slate-800 leading-tight">{config.panels}</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={config.panels}
+                              onChange={(e) => handleOverrideChange(setPanelsOverride, e.target.value)}
+                              onFocus={(e) => e.target.select()}
+                              className="w-full bg-transparent text-sm font-black text-slate-800 leading-tight outline-none focus:bg-white/60 rounded px-0.5 -mx-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
                           </div>
                         </div>
                         <div
@@ -802,9 +837,16 @@ const CommercialResiPage: React.FC = () => {
                             selected ? 'bg-white/40 border-white/20' : 'bg-slate-50 border-slate-100'
                           }`}
                         >
-                          <div className="flex flex-col">
+                          <div className="flex flex-col w-full">
                             <span className="text-[9px] font-bold text-slate-500 uppercase">Battery</span>
-                            <span className="text-sm font-black text-slate-800 leading-tight">{config.batteryQty}</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={config.batteryQty}
+                              onChange={(e) => handleOverrideChange(setBatteryOverride, e.target.value)}
+                              onFocus={(e) => e.target.select()}
+                              className="w-full bg-transparent text-sm font-black text-slate-800 leading-tight outline-none focus:bg-white/60 rounded px-0.5 -mx-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
                           </div>
                         </div>
                       </div>
@@ -956,10 +998,10 @@ We have prepared multiple plans based on your usage, offering different budgets,
                                       // --- Language Switching for Plans ---
                                       if (proposalLang === 'zh') {
                                           const batteryText = p.batteryQty > 0 ? `+ *${p.batteryQty}粒电池*` : '*（无电池）*';
-                                          return `\n--------------------\n\n☀ *方案${i + 1}：节省${p.savingsPct.toFixed(1)}%*\n\n*系统配置*：${p.panels}片 *${p.kwp.toFixed(2)} kWp* ${batteryText}\n\n📌 *每月预计节省*：约 *RM${p.monthlySavings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}*\n📌 *每年预计节省*：约 *RM${(p.monthlySavings * 12).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}*\n💰 *系统现金价*：*RM${cashPrice.toLocaleString(undefined, {maximumFractionDigits: 0})}*\n🎉 *0%分期总额*：*RM${installmentTotal.toLocaleString(undefined, {maximumFractionDigits: 0})}* （36个月，*每月供期*：*RM${monthlyInstallment.toLocaleString(undefined, {maximumFractionDigits: 0})}*）\n📌 *预计回本期*：*${p.roi.toFixed(2)} 年*`;
+                                          return `\n--------------------\n\n☀ *方案${i + 1}：节省${p.savingsPct.toFixed(1)}%*\n\n*系统配置*：${p.panels}片 *${p.kwp.toFixed(2)} kWp* ${batteryText}\n\n📌 *每月预计节省*：约 RM${roundDownTen(p.monthlySavings).toLocaleString()}+-\n📌 *每年预计节省*：约 RM${(roundDownTen(p.monthlySavings) * 12).toLocaleString()}+-\n💰 *系统现金价*：*RM${cashPrice.toLocaleString(undefined, {maximumFractionDigits: 0})}*\n🎉 *0%分期总额*：*RM${installmentTotal.toLocaleString(undefined, {maximumFractionDigits: 0})}* （36个月，*每月供期*：*RM${monthlyInstallment.toLocaleString(undefined, {maximumFractionDigits: 0})}*）\n📌 *预计回本期*：*${p.roi.toFixed(2)} 年*`;
                                       } else {
                                           const batteryText = p.batteryQty > 0 ? `+ *${p.batteryQty} Batteries*` : '*(No Battery)*';
-                                          return `\n--------------------\n\n☀ *Option ${i + 1}: Save ${p.savingsPct.toFixed(1)}%*\n\n*System Config*: ${p.panels} pcs *${p.kwp.toFixed(2)} kWp* ${batteryText}\n\n📌 *Est. Monthly Savings*: ~ *RM${p.monthlySavings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}*\n📌 *Est. Annual Savings*: ~ *RM${(p.monthlySavings * 12).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}*\n💰 *System Cash Price*: *RM${cashPrice.toLocaleString(undefined, {maximumFractionDigits: 0})}*\n🎉 *0% Installment Total*: *RM${installmentTotal.toLocaleString(undefined, {maximumFractionDigits: 0})}* (36 Months, *Monthly*: *RM${monthlyInstallment.toLocaleString(undefined, {maximumFractionDigits: 0})}*)\n📌 *Est. ROI*: *${p.roi.toFixed(2)} Years*`;
+                                          return `\n--------------------\n\n☀ *Option ${i + 1}: Save ${p.savingsPct.toFixed(1)}%*\n\n*System Config*: ${p.panels} pcs *${p.kwp.toFixed(2)} kWp* ${batteryText}\n\n📌 *Est. Monthly Savings*: ~ RM${roundDownTen(p.monthlySavings).toLocaleString()}+-\n📌 *Est. Annual Savings*: ~ RM${(roundDownTen(p.monthlySavings) * 12).toLocaleString()}+-\n💰 *System Cash Price*: *RM${cashPrice.toLocaleString(undefined, {maximumFractionDigits: 0})}*\n🎉 *0% Installment Total*: *RM${installmentTotal.toLocaleString(undefined, {maximumFractionDigits: 0})}* (36 Months, *Monthly*: *RM${monthlyInstallment.toLocaleString(undefined, {maximumFractionDigits: 0})}*)\n📌 *Est. ROI*: *${p.roi.toFixed(2)} Years*`;
                                       }
                                   }).join('');
 
@@ -989,10 +1031,10 @@ We have prepared multiple plans based on your usage, offering different budgets,
                                         
                                         if (proposalLang === 'zh') {
                                             const batteryText = p.batteryQty > 0 ? `+ *${p.batteryQty}粒电池*` : '*（无电池）*';
-                                            return `\n--------------------\n\n☀ *方案${i + 1}：节省${p.savingsPct.toFixed(1)}%*\n\n*系统配置*：${p.panels}片 *${p.kwp.toFixed(2)} kWp* ${batteryText}\n\n📌 *每月预计节省*：约 *RM${p.monthlySavings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}*\n📌 *每年预计节省*：约 *RM${(p.monthlySavings * 12).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}*\n💰 *系统现金价*：*RM${cashPrice.toLocaleString(undefined, {maximumFractionDigits: 0})}*\n🎉 *0%分期总额*：*RM${installmentTotal.toLocaleString(undefined, {maximumFractionDigits: 0})}* （36个月，*每月供期*：*RM${monthlyInstallment.toLocaleString(undefined, {maximumFractionDigits: 0})}*）\n📌 *预计回本期*：*${p.roi.toFixed(2)} 年*`;
+                                            return `\n--------------------\n\n☀ *方案${i + 1}：节省${p.savingsPct.toFixed(1)}%*\n\n*系统配置*：${p.panels}片 *${p.kwp.toFixed(2)} kWp* ${batteryText}\n\n📌 *每月预计节省*：约 RM${roundDownTen(p.monthlySavings).toLocaleString()}+-\n📌 *每年预计节省*：约 RM${(roundDownTen(p.monthlySavings) * 12).toLocaleString()}+-\n💰 *系统现金价*：*RM${cashPrice.toLocaleString(undefined, {maximumFractionDigits: 0})}*\n🎉 *0%分期总额*：*RM${installmentTotal.toLocaleString(undefined, {maximumFractionDigits: 0})}* （36个月，*每月供期*：*RM${monthlyInstallment.toLocaleString(undefined, {maximumFractionDigits: 0})}*）\n📌 *预计回本期*：*${p.roi.toFixed(2)} 年*`;
                                         } else {
                                             const batteryText = p.batteryQty > 0 ? `+ *${p.batteryQty} Batteries*` : '*(No Battery)*';
-                                            return `\n--------------------\n\n☀ *Option ${i + 1}: Save ${p.savingsPct.toFixed(1)}%*\n\n*System Config*: ${p.panels} pcs *${p.kwp.toFixed(2)} kWp* ${batteryText}\n\n📌 *Est. Monthly Savings*: ~ *RM${p.monthlySavings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}*\n📌 *Est. Annual Savings*: ~ *RM${(p.monthlySavings * 12).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}*\n💰 *System Cash Price*: *RM${cashPrice.toLocaleString(undefined, {maximumFractionDigits: 0})}*\n🎉 *0% Installment Total*: *RM${installmentTotal.toLocaleString(undefined, {maximumFractionDigits: 0})}* (36 Months, *Monthly*: *RM${monthlyInstallment.toLocaleString(undefined, {maximumFractionDigits: 0})}*)\n📌 *Est. ROI*: *${p.roi.toFixed(2)} Years*`;
+                                            return `\n--------------------\n\n☀ *Option ${i + 1}: Save ${p.savingsPct.toFixed(1)}%*\n\n*System Config*: ${p.panels} pcs *${p.kwp.toFixed(2)} kWp* ${batteryText}\n\n📌 *Est. Monthly Savings*: ~ RM${roundDownTen(p.monthlySavings).toLocaleString()}+-\n📌 *Est. Annual Savings*: ~ RM${(roundDownTen(p.monthlySavings) * 12).toLocaleString()}+-\n💰 *System Cash Price*: *RM${cashPrice.toLocaleString(undefined, {maximumFractionDigits: 0})}*\n🎉 *0% Installment Total*: *RM${installmentTotal.toLocaleString(undefined, {maximumFractionDigits: 0})}* (36 Months, *Monthly*: *RM${monthlyInstallment.toLocaleString(undefined, {maximumFractionDigits: 0})}*)\n📌 *Est. ROI*: *${p.roi.toFixed(2)} Years*`;
                                         }
                                    }).join('');
                                    

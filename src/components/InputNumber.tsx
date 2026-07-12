@@ -36,7 +36,7 @@ export const InputNumber: React.FC<InputNumberProps> = ({
   };
 
   return (
-    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors">
+    <div className="h-full flex flex-col bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors">
       <div className="flex justify-between items-center mb-2">
         <div className="flex items-center gap-2 text-slate-600 font-medium">
           {icon}

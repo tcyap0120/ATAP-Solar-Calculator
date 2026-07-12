@@ -10,8 +10,10 @@ import { SavingsGraphGenerator } from './components/SavingsGraphGenerator';
 import { DailyFlowDiagram } from './components/DailyFlowDiagram';
 import { DocForm } from './components/DocForm';
 import { ForecastTable } from './components/ForecastTable';
+import { DayNightCalculator } from './components/DayNightCalculator';
+import { SubmissionChecklist } from './components/SubmissionChecklist';
 import { BATTERY_COST_CASH, PANEL_WATTAGE, BATTERY_CAPACITY_KWH, APRIL_PROMO_BATTERY_UNIT_DISCOUNT } from './constants';
-import { Zap, Sun, Battery, DollarSign, Leaf, Calculator, LayoutGrid, BarChart2, Activity, TrendingUp, AlertTriangle, RefreshCw, Download, Lock, ArrowRight, Home, FileText, Table, Menu, X, Building2 } from 'lucide-react';
+import { Zap, Sun, Battery, DollarSign, Leaf, Calculator, LayoutGrid, BarChart2, Activity, TrendingUp, AlertTriangle, RefreshCw, Download, Lock, ArrowRight, Home, FileText, Table, Menu, X, Building2, Clock, ClipboardCheck } from 'lucide-react';
 
 const CommercialSolarShell = lazy(() => import('./commercial/CommercialSolarShell'));
 
@@ -22,9 +24,9 @@ const App = () => {
   const [authError, setAuthError] = useState(false);
 
   // Navigation State with Persistence
-  const [activeTab, setActiveTab] = useState<'calculator' | 'planner' | 'graphs' | 'daily' | 'forms' | 'forecast' | 'commercial'>(() => {
+  const [activeTab, setActiveTab] = useState<'calculator' | 'planner' | 'graphs' | 'daily' | 'forms' | 'forecast' | 'daynight' | 'checklist' | 'commercial'>(() => {
     const saved = localStorage.getItem('solar_activeTab');
-    const ok = saved === 'calculator' || saved === 'planner' || saved === 'graphs' || saved === 'daily' || saved === 'forms' || saved === 'forecast' || saved === 'commercial';
+    const ok = saved === 'calculator' || saved === 'planner' || saved === 'graphs' || saved === 'daily' || saved === 'forms' || saved === 'forecast' || saved === 'daynight' || saved === 'checklist' || saved === 'commercial';
     return ok ? saved : 'planner';
   });
 
@@ -176,11 +178,13 @@ const App = () => {
   // Navigation Items Config
   const navItems = [
     { id: 'planner', label: 'Recommender', icon: LayoutGrid },
+    { id: 'daynight', label: 'DayNight Usage', icon: Clock },
     { id: 'calculator', label: 'Calculator', icon: Calculator },
     { id: 'graphs', label: 'Graph', icon: BarChart2 },
     { id: 'forecast', label: 'Forecast', icon: Table },
     { id: 'daily', label: 'Illustration', icon: Activity },
     { id: 'forms', label: 'Forms', icon: FileText },
+    { id: 'checklist', label: 'Submission Checklist', icon: ClipboardCheck },
   ] as const;
 
   // --- COMMERCIAL SOLAR (separate app shell; does not share residential state) ---
@@ -303,8 +307,8 @@ const App = () => {
                 : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                 }`}
             >
-              <item.icon size={20} />
-              <span>{item.label}</span>
+              <item.icon size={20} className="shrink-0" />
+              <span className="text-left leading-tight">{item.label}</span>
             </button>
           ))}
           <div className="my-3 border-t border-slate-800/80" />
@@ -325,28 +329,6 @@ const App = () => {
         </nav>
 
         <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-3">
-          {activeTab === 'planner' && (
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer text-left rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100/95">
-                <input
-                  type="checkbox"
-                  checked={aprilLaunchingPromo}
-                  onChange={e => handleAprilLaunchingPromoChange(e.target.checked)}
-                  className="h-3.5 w-3.5 shrink-0 rounded border-amber-400/60 text-amber-500 focus:ring-amber-500"
-                />
-                <span className="font-bold text-amber-50">April Launching Promo</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-100/95">
-                <input
-                  type="checkbox"
-                  checked={suriaHomeRebate}
-                  onChange={e => setSuriaHomeRebate(e.target.checked)}
-                  className="h-3.5 w-3.5 shrink-0 rounded border-emerald-400/60 text-emerald-500 focus:ring-emerald-500"
-                />
-                <span className="font-bold text-emerald-50">SuRIA Home RM3,000 Rebate</span>
-              </label>
-            </div>
-          )}
           {showInstallBtn && (
             <button
               onClick={handleInstallClick}
@@ -691,6 +673,10 @@ const App = () => {
           />
         </div>
 
+        <div className={activeTab === 'daynight' ? 'block animate-in fade-in duration-300' : 'hidden'}>
+          <DayNightCalculator />
+        </div>
+
         <div className={activeTab === 'daily' ? 'block' : 'hidden'}>
           <DailyFlowDiagram initialUsage={typeof usageKwh === 'number' ? usageKwh : 0} />
         </div>
@@ -714,6 +700,10 @@ const App = () => {
               monthlyGen: simulation.solarGenerationMonthly
             }}
           />
+        </div>
+
+        <div className={activeTab === 'checklist' ? 'block animate-in fade-in duration-300' : 'hidden'}>
+          <SubmissionChecklist />
         </div>
 
       </main>

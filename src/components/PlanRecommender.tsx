@@ -29,7 +29,8 @@ const calculateScenario = (
   gapWarning: boolean,
   aprilLaunchingPromo: boolean,
   backupBoxUpgrade: boolean,
-  suriaHomeRebate: boolean = false
+  suriaHomeRebate: boolean = false,
+  skipInverterUpgrade: boolean = false
 ): RecommendationResult | null => {
   const effectiveUsage = typeof usageKwh === 'number' ? usageKwh : 0;
 
@@ -42,7 +43,8 @@ const calculateScenario = (
   const costs = calculateSystemCost(p, b, phase, {
     aprilLaunchingPromo,
     backupBoxUpgrade,
-    suriaHomeRebate
+    suriaHomeRebate,
+    skipInverterUpgrade
   });
 
   if (!costs) return null;
@@ -121,6 +123,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
   const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
   const [generatedMessage, setGeneratedMessage] = useState<string | null>(null);
   const [showComparison, setShowComparison] = useState(false);
+  const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
 
   const billGapLower = useMemo(() => calculateBill(1500).finalTotal, []);
   const billGapUpper = useMemo(() => calculateBill(1501).finalTotal, []);
@@ -427,7 +430,11 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       msg += `- 假设白天用电比例：${daytimePercent}%\n`;
       msg += `- 电表：${phase === 'single' ? 'Single Phase' : 'Three Phase'}\n`;
       msg += `- 屋顶可容纳电板数量：${roofLimitStr}\n`;
-      msg += `\n我们为您量身定制以下 ${plansToInclude.length} 种方案，以不同预算、节省效能、与回酬周期供您参考 😁\n\n`;
+      if (plansToInclude.length > 1) {
+        msg += `\n我们为您量身定制以下 ${plansToInclude.length} 种方案，以不同预算、节省效能、与回酬周期供您参考 😁\n\n`;
+      } else {
+        msg += `\n`;
+      }
     } else {
       msg = `Hi there! Based on the electricity usage details provided:\n`;
       msg += `- Monthly Bill: ~RM ${roundedBill}\n`;
@@ -435,14 +442,18 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       msg += `- Est. Daytime Usage: ${daytimePercent}%\n`;
       msg += `- Meter Type: ${phase === 'single' ? 'Single Phase' : 'Three Phase'}\n`;
       msg += `- Roof Capacity: ${roofLimitStr}\n`;
-      msg += `\nHere are ${plansToInclude.length} tailored solar proposals for you, covering different budget ranges, savings targets, and ROI periods for your review 😁\n\n`;
+      if (plansToInclude.length > 1) {
+        msg += `\nHere are ${plansToInclude.length} tailored solar proposals for you, covering different budget ranges, savings targets, and ROI periods for your review 😁\n\n`;
+      } else {
+        msg += `\n`;
+      }
     }
 
     if (aprilLaunchingPromo) {
       msg +=
         lang === 'zh'
-          ? `⏰ 限时优惠仅限至 2026年5月30日！\n\n`
-          : `⏰ Limited promo until 30th May 2026 only!\n\n`;
+          ? `⏰ 限时优惠仅限至 2026年7月15日！\n\n`
+          : `⏰ Limited promo until 15th July 2026 only!\n\n`;
     }
 
 
@@ -468,8 +479,12 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
             ? `+ ${r.batteries}粒电池${batteryKwhLabel}kWh`
             : `+ ${r.batteries} ${r.batteries > 1 ? 'Batteries' : 'Battery'} ${batteryKwhLabel}kWh`;
 
-      msg += `☀️ ${lang === 'zh' ? '方案' : 'Plan'} ${index + 1}：${plan.title}\n\n`;
-      msg += `${lang === 'zh' ? '系统配置' : 'System Size'}： *${r.panels} ${lang === 'zh' ? '片太阳能板' : 'Panels'} ${kwp} kWp ${batStr}*\n`;
+      if (plansToInclude.length > 1) {
+        msg += `☀️ ${lang === 'zh' ? '方案' : 'Plan'} ${index + 1}：${plan.title}\n\n`;
+        msg += `${lang === 'zh' ? '系统配置' : 'System Size'}： *${r.panels} ${lang === 'zh' ? '片太阳能板' : 'Panels'} ${kwp} kWp ${batStr}*\n`;
+      } else {
+        msg += `☀️  *${r.panels} ${lang === 'zh' ? '片太阳能板' : 'Panels'} ${kwp} kWp ${batStr}*\n`;
+      }
 
       // When SuRIA rebate is active the stored prices already have the rebate deducted; show pre-rebate first, then after-rebate.
       const suriaRebateAmt = r.suriaRebate ?? 3000;
@@ -500,7 +515,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
     });
 
     if (lang === 'zh') {
-      msg += `💼 *【 配套包括 】*\n\n`;
+      msg += `💼 *【 配套包括 】*\n`;
       msg += `✅ 终生太阳能 RM10,000保险\n`;
       msg += `✅ AI智能能源管理系统\n`;
       msg += `✅ 安装费 & 政府申请手续 全包\n`;
@@ -508,9 +523,10 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       msg += `✅ 10年 GoodWe 全球Tier 1电池保修\n`;
       msg += `✅ 15年 Trina Solar 全球Tier 1太阳能电板保修\n`;
       msg += `✅ 30年 电板发电效能保证\n`;
-      msg += `✅ 1年 安装与人工保修`;
+      msg += `✅ 3年 安装与人工保修\n`;
+      msg += `✅ 1年 屋顶漏水保家`;
     } else {
-      msg += `💼 *【 Package Includes 】*\n\n`;
+      msg += `💼 *【 Package Includes 】*\n`;
       msg += `✅ Lifetime Solar Insurance (RM10,000 Coverage)\n`;
       msg += `✅ AI Smart Energy Management System\n`;
       msg += `✅ All-Inclusive Installation & ATAP Application\n`;
@@ -518,17 +534,31 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       msg += `✅ 10-Year Battery Warranty (GoodWe - Global Tier 1)\n`;
       msg += `✅ 15-Year Solar Panel Warranty (Trina Solar - Global Tier 1)\n`;
       msg += `✅ 30-Year Linear Power Output Warranty\n`;
-      msg += `✅ 1-Year Workmanship & Installation Warranty`;
+      msg += `✅ 3-Year Workmanship & Installation Warranty\n`;
+      msg += `✅ 1-Year Water Leakage Warranty`;
     }
 
     return msg;
   }, [recommendations, manualResult, currentModeSelectedPlans, getActivePlanData, billAmount, usageKwh, daytimePercent, phase, roofMaxPanels, selectionRule, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate]);
 
-  // FIX: corrected Clipboard method name from webText to writeText
+  // Keep WhatsApp message in sync: if settings change while the modal is open, regenerate.
+  useEffect(() => {
+    if (generatedMessage !== null) {
+      setGeneratedMessage(generateMessageText(language));
+    }
+  // language is intentionally omitted — the language-toggle handler calls setGeneratedMessage directly.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generateMessageText]);
+
+  const showToast = (message: string) => {
+    setToast({ message, visible: true });
+    setTimeout(() => setToast(t => ({ ...t, visible: false })), 2500);
+  };
+
   const copyToClipboard = () => {
     if (generatedMessage) {
       navigator.clipboard.writeText(generatedMessage);
-      alert(language === 'zh' ? "已复制到剪贴板！" : "Copied to clipboard!");
+      showToast(language === 'zh' ? "已复制到剪贴板！" : "Copied to clipboard!");
     }
   };
 
@@ -640,6 +670,21 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+      {/* Toast notification — z-[9999] so it always floats above modals */}
+      <div
+        className={`fixed top-6 left-1/2 -translate-x-1/2 z-[9999] transition-all duration-500 ${
+          toast.visible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-4 scale-95 pointer-events-none'
+        }`}
+      >
+        <div className="flex items-center gap-3 px-5 py-3.5 rounded-2xl text-white font-semibold text-sm"
+          style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 50%, #166534 100%)', boxShadow: '0 8px 32px rgba(22,163,74,0.45), 0 2px 12px rgba(0,0,0,0.22)' }}
+        >
+          <div className="bg-white/25 rounded-full p-1">
+            <CheckCircle2 size={18} className="text-white" />
+          </div>
+          <span>{toast.message}</span>
+        </div>
+      </div>
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div className="flex justify-between items-start mb-6">
           <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -1164,6 +1209,15 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
 
 // --- Sub-Components ---
 
+// Stackable add-on item. Optimizer = RM700 base + RM170/panel; Concrete Structure = RM200/panel.
+type AddOnItem = { id: number; type: 'optimizer' | 'concrete'; panels: number | '' };
+const ADD_ON_LABEL: Record<AddOnItem['type'], string> = {
+  optimizer: 'Optimizer',
+  concrete: 'Concrete Structure',
+};
+const addOnItemCost = (type: AddOnItem['type'], panels: number): number =>
+  panels > 0 ? (type === 'optimizer' ? 700 + 170 * panels : 200 * panels) : 0;
+
 interface RecommendationCardProps {
   id: string;
   title: string;
@@ -1197,6 +1251,13 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
 
   const [result, setResult] = useState(initialResult);
 
+  // Tracks the upgrade the user manually removed (null = upgrade active / not applicable)
+  const [removedUpgrade, setRemovedUpgrade] = useState<{ toSize: string; cost: number } | null>(null);
+
+  // Stackable per-card add-ons (Optimizer / Concrete Structure). Each adds to cash; CC re-derived.
+  const addOnSeq = useRef(0);
+  const [addOns, setAddOns] = useState<AddOnItem[]>([]);
+
   // Sync state if base props change significantly
   useEffect(() => {
     setPanels(initialResult.panels);
@@ -1214,7 +1275,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     if (p < 6) return;
 
     const newRes = calculateScenario(
-      p, b, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate
+      p, b, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate, removedUpgrade !== null
     );
     if (!newRes) return;
 
@@ -1223,20 +1284,60 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     const samePrice =
       Math.abs(newRes.systemCostCash - prev.systemCostCash) < 0.01 &&
       Math.abs(newRes.systemCostCC - prev.systemCostCC) < 0.01;
-    if (sameDims && samePrice) return;
+    const sameSavings =
+      Math.abs(newRes.monthlySavings - prev.monthlySavings) < 0.01 &&
+      Math.abs(newRes.savedPercentage - prev.savedPercentage) < 0.01;
+    if (sameDims && samePrice && sameSavings) return;
 
     setResult(newRes);
-    if (onUpdate) onUpdate(id, newRes);
-  }, [panels, batteries, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate, id, onUpdate]);
+  }, [panels, batteries, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate, id, onUpdate, removedUpgrade]);
 
-  const invLower = result.inverterSize.toLowerCase();
-  const roofAngles =
-    invLower.includes("3.6 kwac") ||
-    invLower.includes("5 kwac") ||
-    /\b6 kWac\b/i.test(result.inverterSize) ||
-    invLower.includes("8 kwac")
-      ? 2
-      : 3;
+  // Total add-on price = sum of all stacked items.
+  const addOnCost = useMemo(
+    () => addOns.reduce((sum, a) => sum + addOnItemCost(a.type, typeof a.panels === 'number' ? a.panels : 0), 0),
+    [addOns]
+  );
+
+  // Result shown on the card: base system + add-on folded into cash, then CC re-derived
+  // (ceil to nearest RM10 at /0.915) along with the price-based metrics.
+  const viewResult = useMemo<RecommendationResult>(() => {
+    if (addOnCost <= 0) return result;
+    const cash = result.systemCostCash + addOnCost;
+    const cc = Math.ceil(cash / 0.915 / 10) * 10;
+    const annualSavings = result.monthlySavings * 12;
+    return {
+      ...result,
+      systemCostCash: cash,
+      systemCostCC: cc,
+      paybackYearsCash: annualSavings > 0 ? cash / annualSavings : 999,
+      paybackYearsCC: annualSavings > 0 ? cc / annualSavings : 999,
+      roiPercentage: cash > 0 ? (annualSavings / cash) * 100 : 0,
+    };
+  }, [result, addOnCost]);
+
+  // Single source of truth for propagating the (add-on inclusive) plan to the parent.
+  useEffect(() => {
+    if (onUpdate && typeof panels === 'number' && panels >= 6) {
+      onUpdate(id, viewResult);
+    }
+  }, [viewResult, id, onUpdate, panels]);
+
+  // Stackable add-on handlers. New items default their panel count to the plan's panel count.
+  const addAddOn = () => {
+    setAddOns(prev => [
+      ...prev,
+      { id: addOnSeq.current++, type: 'optimizer', panels: typeof panels === 'number' ? panels : '' },
+    ]);
+  };
+  const removeAddOn = (itemId: number) => setAddOns(prev => prev.filter(a => a.id !== itemId));
+  const updateAddOn = (itemId: number, patch: Partial<AddOnItem>) =>
+    setAddOns(prev => prev.map(a => (a.id === itemId ? { ...a, ...patch } : a)));
+
+  // Roof angles the inverter can support, by AC rating:
+  //   3.6 / 5 / 6 / 8 kWac → 2,  10 / 12 kWac → 3,  15 kWac → 4.
+  const kwacMatch = result.inverterSize.match(/([\d.]+)\s*kwac/i);
+  const kwac = kwacMatch ? parseFloat(kwacMatch[1]) : 0;
+  const roofAngles = kwac >= 15 ? 4 : kwac >= 10 ? 3 : 2;
   const kwp = (result.panels * PANEL_WATTAGE / 1000).toFixed(2);
   const batUtilPercent = Math.round(result.batteryUtilization * 100);
 
@@ -1284,11 +1385,6 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     } else {
       const parsed = parseInt(val);
       setPanels(parsed);
-      if (onUpdate && !isNaN(parsed) && parsed >= 6) {
-        const b = typeof batteries === 'number' ? batteries : 0;
-        const newRes = calculateScenario(parsed, b, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate);
-        if (newRes) onUpdate(id, newRes);
-      }
     }
   };
 
@@ -1298,12 +1394,8 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
       setBatteries('');
     } else {
       const parsed = parseInt(val);
+      setRemovedUpgrade(null);
       setBatteries(parsed);
-      if (onUpdate && !isNaN(parsed) && parsed >= 0) {
-        const p = typeof panels === 'number' ? panels : 0;
-        const newRes = calculateScenario(p, parsed, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate);
-        if (newRes) onUpdate(id, newRes);
-      }
     }
   };
 
@@ -1311,14 +1403,8 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     const current = typeof panels === 'number' ? panels : 0;
     const newVal = current + delta;
     if (newVal >= 6 && newVal <= 60) {
+      setRemovedUpgrade(null);
       setPanels(newVal);
-      // Eagerly update editedPlans so WhatsApp message is always in sync,
-      // even if the user clicks Whatsapp before the async recalculation effect fires.
-      if (onUpdate) {
-        const b = typeof batteries === 'number' ? batteries : 0;
-        const newRes = calculateScenario(newVal, b, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate);
-        if (newRes) onUpdate(id, newRes);
-      }
     }
   };
 
@@ -1326,12 +1412,8 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     const current = typeof batteries === 'number' ? batteries : 0;
     const newVal = current + delta;
     if (newVal >= 0 && newVal <= 20) {
+      setRemovedUpgrade(null);
       setBatteries(newVal);
-      if (onUpdate) {
-        const p = typeof panels === 'number' ? panels : 0;
-        const newRes = calculateScenario(p, newVal, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate);
-        if (newRes) onUpdate(id, newRes);
-      }
     }
   };
 
@@ -1440,6 +1522,70 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Add-On Control (stackable — add multiple) */}
+          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/60">
+            <div className="flex items-center justify-between mb-2 pl-1">
+              <span className="text-sm font-semibold text-slate-700">Add-On</span>
+              {addOnCost > 0 && (
+                <span className="text-xs font-mono font-bold text-blue-700">+RM {addOnCost.toLocaleString()}</span>
+              )}
+            </div>
+
+            {addOns.length > 0 && (
+              <div className="space-y-2">
+                {addOns.map((a) => {
+                  const qty = typeof a.panels === 'number' ? a.panels : 0;
+                  const cost = addOnItemCost(a.type, qty);
+                  return (
+                    <div key={a.id} className="bg-white border border-slate-200 rounded-xl p-2 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <select
+                            value={a.type}
+                            onChange={(e) => updateAddOn(a.id, { type: e.target.value as AddOnItem['type'] })}
+                            className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-2.5 pr-8 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 appearance-none cursor-pointer"
+                          >
+                            <option value="optimizer">Optimizer</option>
+                            <option value="concrete">Concrete Structure</option>
+                          </select>
+                          <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" />
+                        </div>
+                        <button
+                          onClick={() => removeAddOn(a.id)}
+                          className="w-9 h-9 shrink-0 rounded-lg bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors"
+                          title="Remove add-on"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          value={a.panels}
+                          onChange={(e) => updateAddOn(a.id, { panels: e.target.value === '' ? '' : parseInt(e.target.value) })}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          className="w-16 h-9 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-slate-800 outline-none focus:border-blue-400"
+                        />
+                        <span className="text-[11px] text-slate-400 flex-1">
+                          panels · {a.type === 'optimizer' ? 'RM700 + RM170/panel' : 'RM200/panel'}
+                        </span>
+                        <span className="font-mono font-bold text-sm text-blue-700">+RM {cost.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <button
+              onClick={addAddOn}
+              className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 bg-white py-2 text-xs font-semibold text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
+            >
+              <Plus size={14} /> Add Add-On
+            </button>
+          </div>
         </div>
 
         {/* Warning if Phase Mismatch (General) */}
@@ -1464,15 +1610,38 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
           </div>
         )}
 
-        {/* Auto Upgrade Notification (Replaces Capacity Warning) */}
-        {result.isUpgraded && (
+        {/* Auto Upgrade Notification */}
+        {result.isUpgraded && removedUpgrade === null && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex gap-2 items-start text-xs text-blue-800 animate-in fade-in slide-in-from-top-2">
             <ArrowUpCircle size={14} className="mt-0.5 shrink-0 text-blue-600" />
-            <div>
+            <div className="flex-1">
               <span className="font-bold block mb-0.5">Inverter Upgraded for Safety</span>
               Automatically upgraded from {result.originalInverterSize} to {result.inverterSize}.
               <span className="block mt-1 font-bold">+RM {result.upgradeCost?.toLocaleString()} included in price.</span>
             </div>
+            <button
+              onClick={() => setRemovedUpgrade({ toSize: result.inverterSize, cost: result.upgradeCost ?? 0 })}
+              className="shrink-0 text-blue-500 hover:text-red-500 hover:bg-red-50 border border-blue-200 hover:border-red-300 rounded-lg px-2 py-1 font-bold transition-colors"
+            >
+              Remove
+            </button>
+          </div>
+        )}
+
+        {/* Upgrade Removed Notification */}
+        {removedUpgrade !== null && (
+          <div className="mb-4 p-3 bg-slate-50 border border-slate-300 rounded-xl flex gap-2 items-start text-xs text-slate-600 animate-in fade-in slide-in-from-top-2">
+            <ArrowUpCircle size={14} className="mt-0.5 shrink-0 text-slate-400" />
+            <div className="flex-1">
+              <span className="font-bold block mb-0.5">Inverter Upgrade Removed</span>
+              Using {result.inverterSize}. Upgrade to {removedUpgrade.toSize} (−RM {removedUpgrade.cost.toLocaleString()}) not included.
+            </div>
+            <button
+              onClick={() => setRemovedUpgrade(null)}
+              className="shrink-0 text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 hover:border-blue-300 rounded-lg px-2 py-1 font-bold transition-colors"
+            >
+              Restore
+            </button>
           </div>
         )}
 
@@ -1498,7 +1667,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
           </div>
           <div className="flex justify-between text-sm items-center">
             <span className="text-slate-500 font-medium">Payback</span>
-            <span className="font-bold text-blue-600">{result.paybackYearsCash.toFixed(1)} - {result.paybackYearsCC.toFixed(1)} Years</span>
+            <span className="font-bold text-blue-600">{viewResult.paybackYearsCash.toFixed(1)} - {viewResult.paybackYearsCC.toFixed(1)} Years</span>
           </div>
           <div className="flex justify-between text-[10px] items-center mt-0.5">
             <span className="text-slate-400">Savings after 10yrs</span>
@@ -1506,22 +1675,34 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
           </div>
           <div className="flex justify-between text-[10px] items-center mt-0.5">
             <span className="text-slate-400">10 Year Total Net Profit</span>
-            <span className="font-mono font-bold text-slate-500">RM {((result.monthlySavings * 120) - result.systemCostCash).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+            <span className="font-mono font-bold text-slate-500">RM {((result.monthlySavings * 120) - viewResult.systemCostCash).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
           </div>
 
           <div className="my-4 border-t border-slate-100"></div>
 
+          {addOns.map((a) => {
+            const qty = typeof a.panels === 'number' ? a.panels : 0;
+            const cost = addOnItemCost(a.type, qty);
+            if (cost <= 0) return null;
+            return (
+              <div key={a.id} className="flex justify-between text-xs items-center text-slate-500">
+                <span>+ {ADD_ON_LABEL[a.type]} ({qty} panels)</span>
+                <span className="font-mono font-semibold">+RM {cost.toLocaleString()}</span>
+              </div>
+            );
+          })}
+
           <div className="flex justify-between text-sm items-center">
             <span className="text-slate-500">Credit Card Price</span>
-            <span className="font-mono font-bold text-slate-800 text-lg">RM {result.systemCostCC.toLocaleString()}</span>
+            <span className="font-mono font-bold text-slate-800 text-lg">RM {viewResult.systemCostCC.toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm items-center">
             <span className="text-slate-500">Installment (36m)</span>
-            <span className="font-mono text-slate-500 text-xs">RM {(result.systemCostCC / 36).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</span>
+            <span className="font-mono text-slate-500 text-xs">RM {(viewResult.systemCostCC / 36).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</span>
           </div>
           <div className="flex justify-between text-sm mt-1 items-center">
             <span className="text-slate-500 font-bold">Cash Price</span>
-            <span className="font-mono font-bold text-emerald-600 text-lg">RM {result.systemCostCash.toLocaleString()}</span>
+            <span className="font-mono font-bold text-emerald-600 text-lg">RM {viewResult.systemCostCash.toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -1625,16 +1806,18 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
     if (!tableRef.current) return;
 
     const original = tableRef.current;
+    const numPlans = data.length;
 
-    // Clone the element and attach to body so html2canvas sees it outside
-    // the modal's max-height / overflow-y-auto / overflow-hidden ancestors.
+    // Force desktop-sized export: 200px label col + 240px per plan col + 80px padding
+    const exportWidth = Math.max(860, 200 + numPlans * 240 + 80);
+
     const clone = original.cloneNode(true) as HTMLElement;
     Object.assign(clone.style, {
       position: 'fixed',
       left: '-99999px',
       top: '0px',
       overflow: 'visible',
-      width: original.scrollWidth + 'px',
+      width: exportWidth + 'px',
       maxWidth: 'none',
       height: 'auto',
       maxHeight: 'none',
@@ -1642,17 +1825,19 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
       pointerEvents: 'none',
       transform: 'none',
     });
-    // Strip overflow clipping from every descendant inside the clone
+    // Strip overflow/size clipping from every descendant
     clone.querySelectorAll<HTMLElement>('*').forEach(e => {
       e.style.overflow = 'visible';
       e.style.maxHeight = 'none';
+      e.style.maxWidth = 'none';
     });
 
     document.body.appendChild(clone);
 
-    // Two animation frames so the browser fully lays out the clone
+    // Allow browser to fully reflow the desktop-width clone + images to load
     await new Promise(r => requestAnimationFrame(r));
     await new Promise(r => requestAnimationFrame(r));
+    await new Promise(r => setTimeout(r, 250));
 
     const captureW = clone.scrollWidth;
     const captureH = clone.scrollHeight;
@@ -1668,7 +1853,9 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
         scrollY: 0,
         width: captureW,
         height: captureH,
-        windowWidth: captureW + 200,
+        // 1400px windowWidth activates all Tailwind sm:/md: breakpoints so
+        // desktop font sizes, paddings, and min-widths render correctly
+        windowWidth: 1400,
         windowHeight: captureH + 200,
         imageTimeout: 15000,
       });
@@ -1816,7 +2003,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
             <div className="overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-0 overscroll-x-contain touch-pan-x rounded-xl [scrollbar-gutter:stable]">
             <table
               className="w-full text-left border-collapse rounded-xl overflow-hidden shadow-sm text-sm sm:text-base"
-              style={{ minWidth: `${Math.max(300, 96 + data.length * 136)}px` }}
+              style={{ minWidth: `${Math.max(480, 160 + data.length * 200)}px` }}
             >
               <thead>
                 <tr>
@@ -2007,10 +2194,10 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
                               {language === 'zh' ? '系统价格' : 'Installment Price'}
                             </div>
                             {suriaHomeRebate && (
-                              <div className="text-sm text-slate-400 line-through tabular-nums">RM {ccBefore.toLocaleString()}</div>
+                              <div className="text-sm text-slate-400 tabular-nums">RM {ccBefore.toLocaleString()}</div>
                             )}
-                            <div className="text-lg sm:text-xl font-bold text-slate-900 tabular-nums">RM {ccAfter.toLocaleString()}</div>
-                            <div className="text-[10px] sm:text-xs text-slate-500 mt-0.5">RM {Math.round(ccAfter / 36).toLocaleString()} / {language === 'zh' ? '月' : 'mo'} (36{language === 'zh' ? '期' : 'm'})</div>
+                            <div className="text-lg sm:text-xl font-bold text-slate-900 tabular-nums">RM {ccAfter.toLocaleString()}{suriaHomeRebate && <span className="text-xs font-normal text-slate-500"> (津贴后)</span>}</div>
+                            <div className="text-[10px] sm:text-xs text-slate-500 mt-0.5">RM {Math.round(ccBefore / 36).toLocaleString()} / {language === 'zh' ? '月' : 'mo'} (36{language === 'zh' ? '期' : 'm'})</div>
                           </div>
 
                           {/* Cash Price */}
@@ -2019,9 +2206,9 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
                               {language === 'zh' ? '现金优惠价' : 'Cash Price'}
                             </div>
                             {suriaHomeRebate && (
-                              <div className="text-sm text-slate-400 line-through tabular-nums">RM {cashBefore.toLocaleString()}</div>
+                              <div className="text-sm text-slate-400 tabular-nums">RM {cashBefore.toLocaleString()}</div>
                             )}
-                            <div className="text-base sm:text-lg font-bold text-emerald-600 tabular-nums">RM {cashAfter.toLocaleString()}</div>
+                            <div className="text-base sm:text-lg font-bold text-emerald-600 tabular-nums">RM {cashAfter.toLocaleString()}{suriaHomeRebate && <span className="text-xs font-normal text-emerald-500"> (津贴后)</span>}</div>
                           </div>
                         </div>
                       </td>

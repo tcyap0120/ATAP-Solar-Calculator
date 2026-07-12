@@ -227,12 +227,12 @@ export const ForecastTable: React.FC<ForecastTableProps> = ({
               scale: 2,
               backgroundColor: '#ffffff',
               useCORS: true,
-              scrollX: 0,
-              scrollY: 0,
+              scrollX: -window.scrollX,
+              scrollY: -window.scrollY,
               width: el.scrollWidth,
               height: el.scrollHeight,
-              windowWidth: el.scrollWidth,
-              windowHeight: el.scrollHeight,
+              windowWidth: Math.max(el.scrollWidth, 1400),
+              windowHeight: Math.max(el.scrollHeight, 900),
           });
 
           const link = document.createElement('a');

@@ -14,13 +14,15 @@ import {
   BATTERY_CAPACITY_KWH,
   SYSTEM_PRICING,
   BATTERY_COST_CASH,
-  BATTERY_COST_CC,
   APRIL_PROMO_SINGLE_SYSTEM_DISCOUNT,
   APRIL_PROMO_THREE_PHASE_SYSTEM_DISCOUNT,
   APRIL_PROMO_SINGLE_SYSTEM_DISCOUNT_ZERO_BAT,
   APRIL_PROMO_THREE_PHASE_SYSTEM_DISCOUNT_ZERO_BAT,
   APRIL_PROMO_BATTERY_UNIT_DISCOUNT,
-  THREE_PHASE_12_13_INVERTER_UPGRADE_TO_8KW_RM,
+  THREE_PHASE_INVERTER_UPGRADE_5_TO_8KW_RM,
+  THREE_PHASE_INVERTER_UPGRADE_8_TO_10KW_RM,
+  THREE_PHASE_INVERTER_UPGRADE_10_TO_12KW_RM,
+  THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM,
   APRIL_PROMO_AUTO_BACKUP_BOX_SINGLE_PHASE_RM,
   APRIL_PROMO_AUTO_BACKUP_BOX_THREE_PHASE_RM
 } from '../constants';
@@ -273,6 +275,8 @@ export interface CalculateSystemCostOptions {
   backupBoxUpgrade?: boolean;
   /** SuRIA Home government rebate: flat −RM3000 off both cash and CC price. */
   suriaHomeRebate?: boolean;
+  /** When true, skips all auto-inverter upgrade logic and uses the sheet inverter size as-is. */
+  skipInverterUpgrade?: boolean;
 }
 
 /** Total RM discount (same amount subtracted from cash and CC) when April promo is active. */
@@ -305,7 +309,6 @@ export const calculateSystemCost = (
   if (!tier) return null;
 
   let cashPrice = tier.cashPrice;
-  let ccPrice = tier.ccPrice;
   let inverterSize = tier.inverterSize;
 
   const hasExplicitThreePhase =
@@ -324,10 +327,8 @@ export const calculateSystemCost = (
       tier.threePhaseCcPriceWithBattery != null
     ) {
       cashPrice = tier.threePhaseCashPriceWithBattery;
-      ccPrice = tier.threePhaseCcPriceWithBattery;
     } else {
       cashPrice = tier.threePhaseCashPrice!;
-      ccPrice = tier.threePhaseCcPrice!;
     }
   } else if (
     phase === 'single' &&
@@ -336,7 +337,6 @@ export const calculateSystemCost = (
     tier.ccPriceWithBattery != null
   ) {
     cashPrice = tier.cashPriceWithBattery;
-    ccPrice = tier.ccPriceWithBattery;
   }
 
   // --- Single Phase Validation Rules ---
@@ -365,49 +365,60 @@ export const calculateSystemCost = (
   const limit10kW = hasBattery ? 16.74 : 13.64;
   const limit12kW = hasBattery ? 19.84 : 16.12;
 
-  if (phase === 'single') {
-    // Single Phase Logic: DO NOT UPGRADE > 5kWac
-    // We simply accept the configuration if it passed validation above.
-    // Inverter remains what is defined in SYSTEM_PRICING (3.6 / 5 / 6 / 8 kWac single-phase by tier).
-  } else if (!hasExplicitThreePhase) {
-    // Three Phase Cascading Logic (tiers 41+ without explicit three-phase sheet pricing)
+  if (!options?.skipInverterUpgrade) {
+    if (phase === 'single') {
+      // Single Phase Logic: DO NOT UPGRADE > 5kWac
+    } else if (!hasExplicitThreePhase) {
+      // Three Phase Cascading Logic (tiers 41+ without explicit three-phase sheet pricing)
 
-    // Check 8kWac Limit -> Upgrade to 10
-    if (inverterSize.includes("8 kWac") && systemKwp > limit8kW) {
-      inverterSize = "10 kWac Three Phase";
-      upgradeCost += 300;
-      isUpgraded = true;
+      if (inverterSize.includes("8 kWac") && systemKwp > limit8kW) {
+        inverterSize = "10 kWac Three Phase";
+        upgradeCost += 300;
+        isUpgraded = true;
+      }
+      if (inverterSize.includes("10 kWac") && systemKwp > limit10kW) {
+        inverterSize = "12 kWac Three Phase";
+        upgradeCost += 600;
+        isUpgraded = true;
+      }
+      if (inverterSize.includes("12 kWac") && systemKwp > limit12kW) {
+        inverterSize = "15 kWac Three Phase";
+        upgradeCost += 800;
+        isUpgraded = true;
+      }
     }
 
-    // Check 10kWac Limit -> Upgrade to 12
-    if (inverterSize.includes("10 kWac") && systemKwp > limit10kW) {
-      inverterSize = "12 kWac Three Phase";
-      upgradeCost += 600; // 10->12 is RM600
-      isUpgraded = true;
-    }
+    // Three-phase explicit-tier inverter auto-upgrades (panels 6–40), regardless of battery count.
+    if (phase === 'three' && hasExplicitThreePhase) {
+      let targetInverter = inverterSize;
+      let stepCost = 0;
+      if (panels >= 11 && panels <= 14) {
+        targetInverter = '8 kWac Three Phase';
+        stepCost = THREE_PHASE_INVERTER_UPGRADE_5_TO_8KW_RM;
+      } else if (panels >= 18 && panels <= 21) {
+        targetInverter = '10 kWac Three Phase';
+        stepCost = THREE_PHASE_INVERTER_UPGRADE_8_TO_10KW_RM;
+      } else if (panels >= 22 && panels <= 26) {
+        targetInverter = '12 kWac Three Phase';
+        stepCost = THREE_PHASE_INVERTER_UPGRADE_10_TO_12KW_RM;
+      } else if (panels >= 27 && panels <= 32) {
+        targetInverter = '15 kWac Three Phase';
+        stepCost = THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM;
+      }
 
-    // Check 12kWac Limit -> Upgrade to 15
-    if (inverterSize.includes("12 kWac") && systemKwp > limit12kW) {
-      inverterSize = "15 kWac Three Phase";
-      upgradeCost += 800; // 12->15 is RM800
-      isUpgraded = true;
+      // Only treat as an upgrade when the sheet inverter is actually smaller than the
+      // target. Some tiers (e.g. panels 12–14) already list the larger inverter in the
+      // sheet, so re-applying it here would show a bogus "8 kWac → 8 kWac" upgrade and
+      // double-charge the add-on cost that the sheet price already includes.
+      if (targetInverter !== originalInverter) {
+        inverterSize = targetInverter;
+        upgradeCost += stepCost;
+        isUpgraded = true;
+      }
     }
-  }
-
-  // Three-phase 12–13 panels: tier lists 5 kWac; auto-upgrade to 8 kWac (+RM150 cash & CC).
-  if (
-    phase === 'three' &&
-    hasExplicitThreePhase &&
-    (panels === 12 || panels === 13) &&
-    inverterSize.includes('5 kWac')
-  ) {
-    inverterSize = '8 kWac Three Phase';
-    upgradeCost += THREE_PHASE_12_13_INVERTER_UPGRADE_TO_8KW_RM;
-    isUpgraded = true;
   }
 
   const batCash = batteries * BATTERY_COST_CASH;
-  const batCC = batteries * BATTERY_COST_CC;
 
   const backupBoxUpgradeActive = Boolean(
     options?.aprilLaunchingPromo &&
@@ -420,21 +431,24 @@ export const calculateSystemCost = (
       : APRIL_PROMO_AUTO_BACKUP_BOX_THREE_PHASE_RM
     : 0;
 
+  // All add-ons (inverter upgrade, backup box) apply to the cash price only.
   let cash = cashPrice + batCash + upgradeCost + backupBoxUpgradeRM;
-  let cc = ccPrice + batCC + upgradeCost + backupBoxUpgradeRM;
 
   let aprilPromoDiscount = 0;
   if (options?.aprilLaunchingPromo) {
     aprilPromoDiscount = getAprilLaunchingPromoDiscount(phase, batteries);
     cash -= aprilPromoDiscount;
-    cc -= aprilPromoDiscount;
   }
 
   const suriaRebate = options?.suriaHomeRebate
     ? (phase === 'single' && (panels === 6 || panels === 7) ? 1800 : 3000)
     : 0;
   cash -= suriaRebate;
-  cc -= suriaRebate;
+
+  // CC (36-month installment) price is ALWAYS derived from the final cash price:
+  //   cc = ceil(cash / 0.915) rounded UP to the nearest RM10.
+  // Every discount/upgrade is applied to cash first, then cc is derived from it.
+  const cc = Math.ceil(cash / 0.915 / 10) * 10;
 
   return {
     cash,
