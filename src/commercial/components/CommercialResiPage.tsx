@@ -261,7 +261,7 @@ const CommercialResiPage: React.FC = () => {
   const formulaBasedPlans = useMemo(() => {
     const dailyKwh = usageKwh / 30;
     const d = daytimePercent / 100;
-    const panelRating = settings.panelRating || 0.64;
+    const panelRating = settings.panelRating || 0.65;
     const usablePerBattery =
       (settings.battery?.capacityKwh ?? 16) * (settings.battery?.usableRatio ?? 0.9);
     const nightKwh = dailyKwh * (1 - d);

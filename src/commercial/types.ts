@@ -77,7 +77,7 @@ export interface FinancingSettings {
 }
 
 export interface GlobalSettings {
-  panelRating: number; // kWp per panel (default 0.64)
+  panelRating: number; // kWp per panel (default 0.65)
   sunHours: number; // default 3.3
   tariffRate: number; // default 0.5068
   kwtbb: number; // default 1.6% (stored as 0.016)

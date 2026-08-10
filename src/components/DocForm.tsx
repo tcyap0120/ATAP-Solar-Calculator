@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { generateDocument } from '../utils/docGenerator';
 import { calculateSystemCost } from '../utils/billingEngine';
-import { BATTERY_COST_CASH, PANEL_WATTAGE, PEAK_SUN_HOURS, APRIL_PROMO_BATTERY_UNIT_DISCOUNT } from '../constants';
+import { BATTERY_COST_CASH, PANEL_WATTAGE, PEAK_SUN_HOURS, AUGUST_PROMO_BATTERY_UNIT_DISCOUNT } from '../constants';
 import { InputNumber } from './InputNumber';
 import { FileText, RefreshCw, User, Briefcase, Phone, Mail, MapPin, Zap, Battery, DollarSign, Activity, AlertTriangle, CreditCard, UserCheck, FileDown, PenTool } from 'lucide-react';
 
 interface DocFormProps {
-  aprilLaunchingPromo?: boolean;
+  augustPromo?: boolean;
   upgradeAutoBackupBox?: boolean;
   initialData?: {
     systemSize?: number;
@@ -39,7 +39,7 @@ const InputText = ({ label, value, onChange, icon, fullWidth, placeholder }: any
 
 export const DocForm: React.FC<DocFormProps> = ({
   initialData,
-  aprilLaunchingPromo = false,
+  augustPromo = false,
   upgradeAutoBackupBox = false
 }) => {
   // Agent Details
@@ -116,7 +116,7 @@ export const DocForm: React.FC<DocFormProps> = ({
   const updatePricing = (panels: number, batteries: number, phase: 'Single' | 'Three') => {
     const phaseKey = phase === 'Three' ? 'three' : 'single';
     const cost = calculateSystemCost(panels, batteries, phaseKey, {
-      aprilLaunchingPromo,
+      augustPromo,
       backupBoxUpgrade: upgradeAutoBackupBox
     });
     
@@ -126,7 +126,7 @@ export const DocForm: React.FC<DocFormProps> = ({
       // Format inverter size: "8 kWac Single Phase" -> "8"
       const sizeNum = parseInverterSize(cost.inverterSize);
       setInverterSize(sizeNum);
-      const netBattUnit = aprilLaunchingPromo ? BATTERY_COST_CASH - APRIL_PROMO_BATTERY_UNIT_DISCOUNT : BATTERY_COST_CASH;
+      const netBattUnit = augustPromo ? BATTERY_COST_CASH - AUGUST_PROMO_BATTERY_UNIT_DISCOUNT : BATTERY_COST_CASH;
       setBatteryCashPrice(batteries * netBattUnit);
     }
   };
@@ -197,7 +197,7 @@ export const DocForm: React.FC<DocFormProps> = ({
     const qty = typeof batteryQty === 'number' ? batteryQty : 0;
     if (panels >= 6) updatePricing(panels, qty, meterPhase);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- promo toggle should refresh prices only
-  }, [aprilLaunchingPromo, upgradeAutoBackupBox]);
+  }, [augustPromo, upgradeAutoBackupBox]);
 
   // --- End Auto-Sync Logic ---
 

@@ -80,7 +80,7 @@ const QuotationPage: React.FC = () => {
     const { name, value } = e.target;
     
     // Auto-Sync Logic
-    const rating = settings.panelRating || 0.64; 
+    const rating = settings.panelRating || 0.65;
     
     updateQuotationDraft(prev => {
         let updates: any = { [name]: name === 'systemprice' ? parseFloat(value) || 0 : value };

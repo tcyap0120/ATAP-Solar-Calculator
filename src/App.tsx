@@ -12,7 +12,7 @@ import { DocForm } from './components/DocForm';
 import { ForecastTable } from './components/ForecastTable';
 import { DayNightCalculator } from './components/DayNightCalculator';
 import { SubmissionChecklist } from './components/SubmissionChecklist';
-import { BATTERY_COST_CASH, PANEL_WATTAGE, BATTERY_CAPACITY_KWH, APRIL_PROMO_BATTERY_UNIT_DISCOUNT } from './constants';
+import { BATTERY_COST_CASH, PANEL_WATTAGE, BATTERY_CAPACITY_KWH, AUGUST_PROMO_BATTERY_UNIT_DISCOUNT } from './constants';
 import { Zap, Sun, Battery, DollarSign, Leaf, Calculator, LayoutGrid, BarChart2, Activity, TrendingUp, AlertTriangle, RefreshCw, Download, Lock, ArrowRight, Home, FileText, Table, Menu, X, Building2, Clock, ClipboardCheck } from 'lucide-react';
 
 const CommercialSolarShell = lazy(() => import('./commercial/CommercialSolarShell'));
@@ -63,12 +63,12 @@ const App = () => {
   // Mobile Menu State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const [aprilLaunchingPromo, setAprilLaunchingPromo] = useState(false);
+  const [augustPromo, setAugustPromo] = useState(false);
   const [upgradeAutoBackupBox, setUpgradeAutoBackupBox] = useState(false);
   const [suriaHomeRebate, setSuriaHomeRebate] = useState(false);
 
-  const handleAprilLaunchingPromoChange = (value: boolean) => {
-    setAprilLaunchingPromo(value);
+  const handleAugustPromoChange = (value: boolean) => {
+    setAugustPromo(value);
     if (!value) setUpgradeAutoBackupBox(false);
   };
 
@@ -160,11 +160,11 @@ const App = () => {
     // Single-phase sheet runs to 21 panels; above that use three-phase tier pricing.
     const estimatedPhase = panelCount > 21 ? 'three' : 'single';
     return calculateSystemCost(panelCount, batteryCount, estimatedPhase, {
-      aprilLaunchingPromo,
+      augustPromo,
       backupBoxUpgrade: upgradeAutoBackupBox,
       suriaHomeRebate
     });
-  }, [panelCount, batteryCount, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate]);
+  }, [panelCount, batteryCount, augustPromo, upgradeAutoBackupBox, suriaHomeRebate]);
 
   const savingsPercent = simulation.originalBill.finalTotal > 0
     ? (simulation.monthlySavings / simulation.originalBill.finalTotal) * 100
@@ -444,7 +444,7 @@ const App = () => {
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">System Size</div>
                     <div className="space-y-6">
                       <InputNumber
-                        label="Solar Panels (640W)"
+                        label="Solar Panels (650W)"
                         value={panelCount}
                         min={0}
                         max={500}
@@ -469,18 +469,18 @@ const App = () => {
                     <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
                       <input
                         type="checkbox"
-                        checked={aprilLaunchingPromo}
-                        onChange={e => handleAprilLaunchingPromoChange(e.target.checked)}
+                        checked={augustPromo}
+                        onChange={e => handleAugustPromoChange(e.target.checked)}
                         className="mt-0.5 h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
                       />
                       <span>
-                        <span className="font-bold">April Launching Promo</span>
+                        <span className="font-bold">August Promo</span>
                         <span className="block text-xs text-amber-800/90 mt-0.5">
                           No battery: single −RM800 / three-phase −RM1600 on system. With 1+ batteries: single −RM1800; three-phase −RM3000; −RM800 per battery (cash &amp; CC).
                         </span>
                       </span>
                     </label>
-                    {aprilLaunchingPromo && (
+                    {augustPromo && (
                       <label className="ml-2 flex items-start gap-3 cursor-pointer rounded-xl border border-amber-200/80 bg-amber-50/50 px-4 py-3 text-sm text-amber-950">
                         <input
                           type="checkbox"
@@ -537,10 +537,10 @@ const App = () => {
                         <span className="font-semibold">+RM {systemCost.backupBoxUpgradeRM.toLocaleString()}</span>
                       </div>
                     )}
-                    {typeof systemCost.aprilPromoDiscount === 'number' && systemCost.aprilPromoDiscount > 0 && (
+                    {typeof systemCost.augustPromoDiscount === 'number' && systemCost.augustPromoDiscount > 0 && (
                       <div className="flex justify-between items-center text-xs text-amber-800 bg-amber-50 rounded-lg px-2 py-1.5">
-                        <span>April Launching Promo</span>
-                        <span className="font-semibold">−RM {systemCost.aprilPromoDiscount.toLocaleString()}</span>
+                        <span>August Promo</span>
+                        <span className="font-semibold">−RM {systemCost.augustPromoDiscount.toLocaleString()}</span>
                       </div>
                     )}
                     {typeof systemCost.suriaRebate === 'number' && systemCost.suriaRebate > 0 && (
@@ -652,8 +652,8 @@ const App = () => {
         <div className={activeTab === 'planner' ? 'block' : 'hidden'}>
           <PlanRecommender
             initialUsage={typeof usageKwh === 'number' ? usageKwh : 0}
-            aprilLaunchingPromo={aprilLaunchingPromo}
-            onAprilLaunchingPromoChange={handleAprilLaunchingPromoChange}
+            augustPromo={augustPromo}
+            onAugustPromoChange={handleAugustPromoChange}
             upgradeAutoBackupBox={upgradeAutoBackupBox}
             onUpgradeAutoBackupBoxChange={setUpgradeAutoBackupBox}
             suriaHomeRebate={suriaHomeRebate}
@@ -668,7 +668,7 @@ const App = () => {
         <div className={activeTab === 'forecast' ? 'block' : 'hidden'}>
           <ForecastTable
             initialUsage={typeof usageKwh === 'number' ? usageKwh : 0}
-            aprilLaunchingPromo={aprilLaunchingPromo}
+            augustPromo={augustPromo}
             upgradeAutoBackupBox={upgradeAutoBackupBox}
           />
         </div>
@@ -684,7 +684,7 @@ const App = () => {
         {/* DocForm - Rendered hidden when not active to preserve state */}
         <div className={activeTab === 'forms' ? 'block' : 'hidden'}>
           <DocForm
-            aprilLaunchingPromo={aprilLaunchingPromo}
+            augustPromo={augustPromo}
             upgradeAutoBackupBox={upgradeAutoBackupBox}
             initialData={{
               systemSize: Number(totalKwp),
@@ -695,7 +695,7 @@ const App = () => {
               batteryCount: batteryCount,
               batteryCash:
                 batteryCount *
-                (aprilLaunchingPromo ? BATTERY_COST_CASH - APRIL_PROMO_BATTERY_UNIT_DISCOUNT : BATTERY_COST_CASH),
+                (augustPromo ? BATTERY_COST_CASH - AUGUST_PROMO_BATTERY_UNIT_DISCOUNT : BATTERY_COST_CASH),
               annualGen: simulation.solarGenerationMonthly * 12,
               monthlyGen: simulation.solarGenerationMonthly
             }}

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { simulateSolar, getKwhFromBill, calculateSystemCost, calculateBill, getAprilLaunchingPromoDiscount } from '../utils/billingEngine';
+import { simulateSolar, getKwhFromBill, calculateSystemCost, calculateBill, getAugustPromoSystemDiscount } from '../utils/billingEngine';
 import { InputNumber } from './InputNumber';
 import { InputSlider } from './InputSlider';
 import { SYSTEM_PRICING, BATTERY_CAPACITY_KWH, BATTERY_NOMINAL_KWH, PEAK_SUN_HOURS, PANEL_WATTAGE } from '../constants';
@@ -10,8 +10,8 @@ import html2canvas from 'html2canvas';
 
 interface PlanRecommenderProps {
   initialUsage: number;
-  aprilLaunchingPromo: boolean;
-  onAprilLaunchingPromoChange: (value: boolean) => void;
+  augustPromo: boolean;
+  onAugustPromoChange: (value: boolean) => void;
   upgradeAutoBackupBox: boolean;
   onUpgradeAutoBackupBoxChange: (value: boolean) => void;
   suriaHomeRebate: boolean;
@@ -27,7 +27,7 @@ const calculateScenario = (
   phase: 'single' | 'three',
   billAmount: number,
   gapWarning: boolean,
-  aprilLaunchingPromo: boolean,
+  augustPromo: boolean,
   backupBoxUpgrade: boolean,
   suriaHomeRebate: boolean = false,
   skipInverterUpgrade: boolean = false
@@ -41,7 +41,7 @@ const calculateScenario = (
 
   const sim = simulateSolar(effectiveUsage, daytimePercent, p, b);
   const costs = calculateSystemCost(p, b, phase, {
-    aprilLaunchingPromo,
+    augustPromo,
     backupBoxUpgrade,
     suriaHomeRebate,
     skipInverterUpgrade
@@ -89,8 +89,8 @@ const calculateScenario = (
 
 export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
   initialUsage,
-  aprilLaunchingPromo,
-  onAprilLaunchingPromoChange,
+  augustPromo,
+  onAugustPromoChange,
   upgradeAutoBackupBox,
   onUpgradeAutoBackupBoxChange,
   suriaHomeRebate,
@@ -199,7 +199,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
           p, b, effectiveUsage, daytimePercent, phase,
           typeof billAmount === 'number' ? billAmount : 0,
           gapWarning,
-          aprilLaunchingPromo,
+          augustPromo,
           upgradeAutoBackupBox,
           suriaHomeRebate
         );
@@ -297,7 +297,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
 
     return { lowestBreakeven, mediumOffset, highOffset, matchKwh, maxSaving, batteryPlans };
 
-  }, [usageKwh, phase, daytimePercent, roofMaxPanels, billAmount, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate]);
+  }, [usageKwh, phase, daytimePercent, roofMaxPanels, billAmount, gapWarning, augustPromo, upgradeAutoBackupBox, suriaHomeRebate]);
 
   // Handle plan updates from cards
   const handleUpdatePlan = useCallback((id: string, newResult: RecommendationResult) => {
@@ -317,11 +317,11 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       daytimePercent, phase,
       typeof billAmount === 'number' ? billAmount : 0,
       gapWarning,
-      aprilLaunchingPromo,
+      augustPromo,
       upgradeAutoBackupBox,
       suriaHomeRebate
     );
-  }, [manualPanels, manualBatteries, usageKwh, phase, daytimePercent, billAmount, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate]);
+  }, [manualPanels, manualBatteries, usageKwh, phase, daytimePercent, billAmount, gapWarning, augustPromo, upgradeAutoBackupBox, suriaHomeRebate]);
 
 
   // Filter selections based on current mode
@@ -449,7 +449,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       }
     }
 
-    if (aprilLaunchingPromo) {
+    if (augustPromo) {
       msg +=
         lang === 'zh'
           ? `⏰ 限时优惠仅限至 2026年7月15日！\n\n`
@@ -463,8 +463,9 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       const roundedAnnualSavings = roundedMonthlySavings * 12;
       const kwpNum = (r.panels * PANEL_WATTAGE) / 1000;
       const kwp = kwpNum.toFixed(2);
-      const listPriceCCBeforePromo = aprilLaunchingPromo
-        ? r.systemCostCC + getAprilLaunchingPromoDiscount(phase, r.batteries)
+      // Only the system discount reaches the CC price, so only that part is added back here.
+      const listPriceCCBeforePromo = augustPromo
+        ? r.systemCostCC + getAugustPromoSystemDiscount(r.batteries)
         : 0;
 
       const batteryTotalKwhNominal = r.batteries * BATTERY_NOMINAL_KWH;
@@ -539,7 +540,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
     }
 
     return msg;
-  }, [recommendations, manualResult, currentModeSelectedPlans, getActivePlanData, billAmount, usageKwh, daytimePercent, phase, roofMaxPanels, selectionRule, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate]);
+  }, [recommendations, manualResult, currentModeSelectedPlans, getActivePlanData, billAmount, usageKwh, daytimePercent, phase, roofMaxPanels, selectionRule, augustPromo, upgradeAutoBackupBox, suriaHomeRebate]);
 
   // Keep WhatsApp message in sync: if settings change while the modal is open, regenerate.
   useEffect(() => {
@@ -782,12 +783,12 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
           <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
             <input
               type="checkbox"
-              checked={aprilLaunchingPromo}
-              onChange={e => onAprilLaunchingPromoChange(e.target.checked)}
+              checked={augustPromo}
+              onChange={e => onAugustPromoChange(e.target.checked)}
               className="mt-0.5 h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
             />
             <span>
-              <span className="font-bold">{language === 'zh' ? '四月开跑促销' : 'April Launching Promo'}</span>
+              <span className="font-bold">{language === 'zh' ? '八月促销' : 'August Promo'}</span>
               <span className="block text-xs text-amber-800/90 mt-0.5">
                 {language === 'zh'
                   ? '无电池：单相减 RM800、三相减 RM1600（系统）。有电池：单相减 RM1800、三相减 RM3000；每粒电池减 RM800（现金与分期相同）。'
@@ -795,7 +796,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
               </span>
             </span>
           </label>
-          {aprilLaunchingPromo && (
+          {augustPromo && (
             <label className="ml-1 flex items-start gap-3 cursor-pointer rounded-xl border border-amber-200/80 bg-amber-50/50 px-4 py-3 text-sm text-amber-950">
               <input
                 type="checkbox"
@@ -922,7 +923,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 phase={phase}
                 usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
                 gapWarning={gapWarning}
-                aprilLaunchingPromo={aprilLaunchingPromo}
+                augustPromo={augustPromo}
                 upgradeAutoBackupBox={upgradeAutoBackupBox}
                 suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
@@ -944,7 +945,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 phase={phase}
                 usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
                 gapWarning={gapWarning}
-                aprilLaunchingPromo={aprilLaunchingPromo}
+                augustPromo={augustPromo}
                 upgradeAutoBackupBox={upgradeAutoBackupBox}
                 suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
@@ -966,7 +967,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 phase={phase}
                 usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
                 gapWarning={gapWarning}
-                aprilLaunchingPromo={aprilLaunchingPromo}
+                augustPromo={augustPromo}
                 upgradeAutoBackupBox={upgradeAutoBackupBox}
                 suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
@@ -988,7 +989,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 phase={phase}
                 usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
                 gapWarning={gapWarning}
-                aprilLaunchingPromo={aprilLaunchingPromo}
+                augustPromo={augustPromo}
                 upgradeAutoBackupBox={upgradeAutoBackupBox}
                 suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
@@ -1010,7 +1011,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 phase={phase}
                 usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
                 gapWarning={gapWarning}
-                aprilLaunchingPromo={aprilLaunchingPromo}
+                augustPromo={augustPromo}
                 upgradeAutoBackupBox={upgradeAutoBackupBox}
                 suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
@@ -1047,7 +1048,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                   phase={phase}
                   usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
                   gapWarning={gapWarning}
-                  aprilLaunchingPromo={aprilLaunchingPromo}
+                  augustPromo={augustPromo}
                   upgradeAutoBackupBox={upgradeAutoBackupBox}
                   suriaHomeRebate={suriaHomeRebate}
                   onUpdate={handleUpdatePlan}
@@ -1108,7 +1109,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 phase={phase}
                 usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
                 gapWarning={gapWarning}
-                aprilLaunchingPromo={aprilLaunchingPromo}
+                augustPromo={augustPromo}
                 upgradeAutoBackupBox={upgradeAutoBackupBox}
                 suriaHomeRebate={suriaHomeRebate}
               />
@@ -1232,7 +1233,7 @@ interface RecommendationCardProps {
   phase: 'single' | 'three';
   usageKwh: number;
   gapWarning: boolean;
-  aprilLaunchingPromo: boolean;
+  augustPromo: boolean;
   upgradeAutoBackupBox: boolean;
   suriaHomeRebate: boolean;
   onUpdate?: (id: string, newResult: RecommendationResult) => void;
@@ -1241,7 +1242,7 @@ interface RecommendationCardProps {
 const RecommendationCard: React.FC<RecommendationCardProps> = ({
   id, title, result: initialResult, badge, badgeColor, icon,
   currentBill, daytimePercent, isSelected, onToggle,
-  phase, usageKwh, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate, onUpdate
+  phase, usageKwh, gapWarning, augustPromo, upgradeAutoBackupBox, suriaHomeRebate, onUpdate
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -1263,7 +1264,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     setPanels(initialResult.panels);
     setBatteries(initialResult.batteries);
     setResult(initialResult);
-  }, [initialResult.panels, initialResult.batteries, initialResult.systemCostCash, initialResult.systemCostCC, aprilLaunchingPromo, upgradeAutoBackupBox]);
+  }, [initialResult.panels, initialResult.batteries, initialResult.systemCostCash, initialResult.systemCostCC, augustPromo, upgradeAutoBackupBox]);
 
   const resultRef = useRef(result);
   resultRef.current = result;
@@ -1275,7 +1276,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     if (p < 6) return;
 
     const newRes = calculateScenario(
-      p, b, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate, removedUpgrade !== null
+      p, b, usageKwh, daytimePercent, phase, currentBill, gapWarning, augustPromo, upgradeAutoBackupBox, suriaHomeRebate, removedUpgrade !== null
     );
     if (!newRes) return;
 
@@ -1290,7 +1291,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     if (sameDims && samePrice && sameSavings) return;
 
     setResult(newRes);
-  }, [panels, batteries, usageKwh, daytimePercent, phase, currentBill, gapWarning, aprilLaunchingPromo, upgradeAutoBackupBox, suriaHomeRebate, id, onUpdate, removedUpgrade]);
+  }, [panels, batteries, usageKwh, daytimePercent, phase, currentBill, gapWarning, augustPromo, upgradeAutoBackupBox, suriaHomeRebate, id, onUpdate, removedUpgrade]);
 
   // Total add-on price = sum of all stacked items.
   const addOnCost = useMemo(
@@ -1299,11 +1300,11 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   );
 
   // Result shown on the card: base system + add-on folded into cash, then CC re-derived
-  // (ceil to nearest RM10 at /0.915) along with the price-based metrics.
+  // (ceil to nearest RM10 at /0.925) along with the price-based metrics.
   const viewResult = useMemo<RecommendationResult>(() => {
     if (addOnCost <= 0) return result;
     const cash = result.systemCostCash + addOnCost;
-    const cc = Math.ceil(cash / 0.915 / 10) * 10;
+    const cc = Math.ceil(cash / 0.925 / 10) * 10;
     const annualSavings = result.monthlySavings * 12;
     return {
       ...result,

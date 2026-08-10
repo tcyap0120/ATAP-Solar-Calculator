@@ -14,17 +14,17 @@ import {
   BATTERY_CAPACITY_KWH,
   SYSTEM_PRICING,
   BATTERY_COST_CASH,
-  APRIL_PROMO_SINGLE_SYSTEM_DISCOUNT,
-  APRIL_PROMO_THREE_PHASE_SYSTEM_DISCOUNT,
-  APRIL_PROMO_SINGLE_SYSTEM_DISCOUNT_ZERO_BAT,
-  APRIL_PROMO_THREE_PHASE_SYSTEM_DISCOUNT_ZERO_BAT,
-  APRIL_PROMO_BATTERY_UNIT_DISCOUNT,
+  MANUAL_BACKUP_BOX_SINGLE_PHASE_RM,
+  MANUAL_BACKUP_BOX_THREE_PHASE_RM,
+  AUGUST_PROMO_SYSTEM_DISCOUNT,
+  AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT,
+  AUGUST_PROMO_BATTERY_UNIT_DISCOUNT,
   THREE_PHASE_INVERTER_UPGRADE_5_TO_8KW_RM,
   THREE_PHASE_INVERTER_UPGRADE_8_TO_10KW_RM,
   THREE_PHASE_INVERTER_UPGRADE_10_TO_12KW_RM,
   THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM,
-  APRIL_PROMO_AUTO_BACKUP_BOX_SINGLE_PHASE_RM,
-  APRIL_PROMO_AUTO_BACKUP_BOX_THREE_PHASE_RM
+  AUGUST_PROMO_AUTO_BACKUP_BOX_SINGLE_PHASE_RM,
+  AUGUST_PROMO_AUTO_BACKUP_BOX_THREE_PHASE_RM
 } from '../constants';
 import { BillBreakdown, SimulationResult, PricingTier } from '../types';
 
@@ -175,7 +175,7 @@ export const simulateSolar = (
   const N = monthlyUsage * (1 - (daytimePercentage / 100));
 
   // 2. Calculate S (Solar Generation)
-  // 640W panels = 0.64 kWp; kWh per month = kW × peak sun hours × 30
+  // 650W panels = 0.65 kWp; kWh per month = kW × peak sun hours × 30
   const kwPerPanelHour = PANEL_WATTAGE / 1000;
   const S = panelCount * kwPerPanelHour * PEAK_SUN_HOURS * 30;
 
@@ -270,8 +270,8 @@ export const getKwhFromBill = (targetBill: number): number => {
 };
 
 export interface CalculateSystemCostOptions {
-  aprilLaunchingPromo?: boolean;
-  /** With April promo, 1+ batteries, and ticked: flat add-on to system cash/CC (not per battery). */
+  augustPromo?: boolean;
+  /** With August Promo, 1+ batteries, and ticked: flat add-on to system cash/CC (not per battery). */
   backupBoxUpgrade?: boolean;
   /** SuRIA Home government rebate: flat −RM3000 off both cash and CC price. */
   suriaHomeRebate?: boolean;
@@ -279,21 +279,25 @@ export interface CalculateSystemCostOptions {
   skipInverterUpgrade?: boolean;
 }
 
-/** Total RM discount (same amount subtracted from cash and CC) when April promo is active. */
-export const getAprilLaunchingPromoDiscount = (
-  phase: 'single' | 'three',
-  batteries: number
-): number => {
-  const systemPart =
-    batteries >= 1
-      ? phase === 'single'
-        ? APRIL_PROMO_SINGLE_SYSTEM_DISCOUNT
-        : APRIL_PROMO_THREE_PHASE_SYSTEM_DISCOUNT
-      : phase === 'single'
-        ? APRIL_PROMO_SINGLE_SYSTEM_DISCOUNT_ZERO_BAT
-        : APRIL_PROMO_THREE_PHASE_SYSTEM_DISCOUNT_ZERO_BAT;
-  return systemPart + batteries * APRIL_PROMO_BATTERY_UNIT_DISCOUNT;
-};
+/**
+ * System-level RM discount when the August Promo is active. Subtracted from cash before the CC
+ * price is derived, so it reduces both cash and CC.
+ */
+export const getAugustPromoSystemDiscount = (batteries: number): number =>
+  batteries >= 1
+    ? AUGUST_PROMO_SYSTEM_DISCOUNT
+    : AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT;
+
+/**
+ * Per-battery RM discount when the August Promo is active. CASH ONLY — subtracted after the CC
+ * price has been derived, so the CC price never reflects it.
+ */
+export const getAugustPromoBatteryDiscount = (batteries: number): number =>
+  batteries * AUGUST_PROMO_BATTERY_UNIT_DISCOUNT;
+
+/** Total August Promo discount off the CASH price (system + per-battery). */
+export const getAugustPromoDiscount = (batteries: number): number =>
+  getAugustPromoSystemDiscount(batteries) + getAugustPromoBatteryDiscount(batteries);
 
 /**
  * Lookup system cost based on panel count and battery count.
@@ -314,30 +318,21 @@ export const calculateSystemCost = (
   const hasExplicitThreePhase =
     tier.threePhaseCashPrice != null && tier.threePhaseCcPrice != null;
 
-  // Tier prices are system-only (panels, inverter, install). Battery units always add BATTERY_COST_* each.
-  // Single-phase (sheet): no battery = cashPrice/ccPrice; with batteries = cashPriceWithBattery/ccPriceWithBattery
-  // as system base, then + BATTERY_COST_* per unit (e.g. 14p + 1 bat = 23150 + 8200 cash).
-  // Three-phase (sheet tiers): no battery = threePhaseCashPrice / threePhaseCcPrice; with batteries =
-  // threePhaseCashPriceWithBattery / threePhaseCcPriceWithBattery, then + BATTERY_COST_* per battery.
+  // Sheet tier prices are the NO-BATTERY system (panels, inverter, install). A battery system is:
+  //   sheet price + manual backup box (once) + BATTERY_COST_CASH per battery.
+  // e.g. 14 panels single phase + 2 batteries = 22333 + 1600 + 8600 + 8600.
   if (phase === 'three' && hasExplicitThreePhase) {
     inverterSize = tier.threePhaseInverterSize ?? tier.inverterSize;
-    if (
-      batteries > 0 &&
-      tier.threePhaseCashPriceWithBattery != null &&
-      tier.threePhaseCcPriceWithBattery != null
-    ) {
-      cashPrice = tier.threePhaseCashPriceWithBattery;
-    } else {
-      cashPrice = tier.threePhaseCashPrice!;
-    }
-  } else if (
-    phase === 'single' &&
-    batteries > 0 &&
-    tier.cashPriceWithBattery != null &&
-    tier.ccPriceWithBattery != null
-  ) {
-    cashPrice = tier.cashPriceWithBattery;
+    cashPrice = tier.threePhaseCashPrice!;
   }
+
+  // Mandatory whenever batteries are fitted; charged once, not per battery.
+  const manualBackupBoxRM =
+    batteries > 0
+      ? phase === 'single'
+        ? MANUAL_BACKUP_BOX_SINGLE_PHASE_RM
+        : MANUAL_BACKUP_BOX_THREE_PHASE_RM
+      : 0;
 
   // --- Single Phase Validation Rules ---
   // Note: Removed strict return null to prevent UI freezing.
@@ -421,23 +416,28 @@ export const calculateSystemCost = (
   const batCash = batteries * BATTERY_COST_CASH;
 
   const backupBoxUpgradeActive = Boolean(
-    options?.aprilLaunchingPromo &&
+    options?.augustPromo &&
       options?.backupBoxUpgrade &&
       hasBattery
   );
   const backupBoxUpgradeRM = backupBoxUpgradeActive
     ? phase === 'single'
-      ? APRIL_PROMO_AUTO_BACKUP_BOX_SINGLE_PHASE_RM
-      : APRIL_PROMO_AUTO_BACKUP_BOX_THREE_PHASE_RM
+      ? AUGUST_PROMO_AUTO_BACKUP_BOX_SINGLE_PHASE_RM
+      : AUGUST_PROMO_AUTO_BACKUP_BOX_THREE_PHASE_RM
     : 0;
 
-  // All add-ons (inverter upgrade, backup box) apply to the cash price only.
-  let cash = cashPrice + batCash + upgradeCost + backupBoxUpgradeRM;
+  // All add-ons (manual backup box, batteries, inverter upgrade, auto-backup-box upgrade) build
+  // up the cash price; the CC price is derived from it further down.
+  let cash = cashPrice + manualBackupBoxRM + batCash + upgradeCost + backupBoxUpgradeRM;
 
-  let aprilPromoDiscount = 0;
-  if (options?.aprilLaunchingPromo) {
-    aprilPromoDiscount = getAprilLaunchingPromoDiscount(phase, batteries);
-    cash -= aprilPromoDiscount;
+  // August Promo splits in two: the system discount reduces both prices, the per-battery
+  // discount is cash-only. Only the system part is taken off before the CC price is derived.
+  let augustPromoSystemDiscount = 0;
+  let augustPromoBatteryDiscount = 0;
+  if (options?.augustPromo) {
+    augustPromoSystemDiscount = getAugustPromoSystemDiscount(batteries);
+    augustPromoBatteryDiscount = getAugustPromoBatteryDiscount(batteries);
+    cash -= augustPromoSystemDiscount;
   }
 
   const suriaRebate = options?.suriaHomeRebate
@@ -445,10 +445,15 @@ export const calculateSystemCost = (
     : 0;
   cash -= suriaRebate;
 
-  // CC (36-month installment) price is ALWAYS derived from the final cash price:
-  //   cc = ceil(cash / 0.915) rounded UP to the nearest RM10.
-  // Every discount/upgrade is applied to cash first, then cc is derived from it.
-  const cc = Math.ceil(cash / 0.915 / 10) * 10;
+  // CC (36-month installment) price is ALWAYS derived from the cash price:
+  //   cc = ceil(cash / 0.925) rounded UP to the nearest RM10.
+  // Every discount/upgrade is applied to cash first, then cc is derived from it — EXCEPT the
+  // August Promo per-battery discount, which is deducted below so it never reaches the CC price.
+  const cc = Math.ceil(cash / 0.925 / 10) * 10;
+
+  cash -= augustPromoBatteryDiscount;
+
+  const augustPromoDiscount = augustPromoSystemDiscount + augustPromoBatteryDiscount;
 
   return {
     cash,
@@ -458,7 +463,8 @@ export const calculateSystemCost = (
     isUpgraded,
     originalInverter,
     upgradeCost,
-    aprilPromoDiscount: options?.aprilLaunchingPromo ? aprilPromoDiscount : undefined,
+    manualBackupBoxRM: manualBackupBoxRM > 0 ? manualBackupBoxRM : undefined,
+    augustPromoDiscount: options?.augustPromo ? augustPromoDiscount : undefined,
     backupBoxUpgradeRM: backupBoxUpgradeRM > 0 ? backupBoxUpgradeRM : undefined,
     suriaRebate: suriaRebate > 0 ? suriaRebate : undefined
   };

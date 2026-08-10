@@ -1,5 +1,5 @@
 import { InverterBrand, MeterType, GlobalSettings, CalculatorSession, ReferencePrice } from './types';
-import { SYSTEM_PRICING } from '../constants';
+import { SYSTEM_PRICING, MANUAL_BACKUP_BOX_THREE_PHASE_RM } from '../constants';
 
 /** Bump when saved GlobalSettings need a one-time migration (e.g. brand automation defaults). */
 export const COMMERCIAL_SETTINGS_SCHEMA_VERSION = 5;
@@ -7,19 +7,20 @@ export const COMMERCIAL_SETTINGS_SCHEMA_VERSION = 5;
 /** Bump when default meter caps (e.g. max inverter per type) should replace saved meters. */
 export const COMMERCIAL_METERS_SCHEMA_VERSION = 1;
 
-/** Ref Rates table: residential three-phase “with battery” system tier cash + 36m CC per panel count (6–40). */
+/**
+ * Ref Rates table: residential three-phase “battery-ready” system cash + 36m CC per panel count (6–40).
+ * The residential sheet holds no-battery prices, so the manual backup box is added here to keep the
+ * previous meaning of this table (system priced ready for batteries, battery units billed separately).
+ */
 export function commercialReferencePricesFromResidential(): ReferencePrice[] {
-  return SYSTEM_PRICING.filter((t) => t.panels >= 6 && t.panels <= 40).map((t) => ({
-    panels: t.panels,
-    price:
-      t.threePhaseCashPriceWithBattery ??
-      t.threePhaseCashPrice ??
-      t.cashPrice,
-    priceCC36:
-      t.threePhaseCcPriceWithBattery ??
-      t.threePhaseCcPrice ??
-      t.ccPrice
-  }));
+  return SYSTEM_PRICING.filter((t) => t.panels >= 6 && t.panels <= 40).map((t) => {
+    const cash = (t.threePhaseCashPrice ?? t.cashPrice) + MANUAL_BACKUP_BOX_THREE_PHASE_RM;
+    return {
+      panels: t.panels,
+      price: cash,
+      priceCC36: Math.ceil(cash / 0.925 / 10) * 10
+    };
+  });
 }
 
 export const DEFAULT_SESSION: CalculatorSession = {
@@ -44,7 +45,7 @@ export const DEFAULT_SESSION: CalculatorSession = {
 };
 
 export const DEFAULT_SETTINGS: GlobalSettings = {
-  panelRating: 0.64,
+  panelRating: 0.65,
   sunHours: 3.4,
   tariffRate: 0.5068,
   kwtbb: 0.016,

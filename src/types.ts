@@ -40,18 +40,15 @@ export interface PricingTier {
   panels: number;
   kwp: number;
   inverterSize: string;
-  /** No-battery system (cash / 36m CC). */
+  /**
+   * Single-phase NO-BATTERY system (cash / 36m CC). Battery systems add the manual backup box
+   * once plus `BATTERY_COST_CASH` per unit on top — there is no separate with-battery tier price.
+   */
   cashPrice: number;
   ccPrice: number; // 36 Month Installment Price
-  /** Single-phase: when batteries > 0, used as system cash/CC base before adding `BATTERY_COST_*` per unit. */
-  cashPriceWithBattery?: number;
-  ccPriceWithBattery?: number;
-  /** Three-phase: no-battery system cash/CC. With batteries, totals use `threePhaseCashPriceWithBattery` + `BATTERY_COST_*` per unit instead. */
+  /** Three-phase NO-BATTERY system cash/CC; same battery add-on rule as above. */
   threePhaseCashPrice?: number;
   threePhaseCcPrice?: number;
-  /** Three-phase: when batteries > 0, used as system cash/CC base before adding BATTERY_COST_* per unit. */
-  threePhaseCashPriceWithBattery?: number;
-  threePhaseCcPriceWithBattery?: number;
   /** Inverter label for three-phase (differs from single-phase for 6–14). */
   threePhaseInverterSize?: string;
 }

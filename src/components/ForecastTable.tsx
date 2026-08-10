@@ -9,13 +9,13 @@ import html2canvas from 'html2canvas';
 
 interface ForecastTableProps {
   initialUsage: number;
-  aprilLaunchingPromo?: boolean;
+  augustPromo?: boolean;
   upgradeAutoBackupBox?: boolean;
 }
 
 export const ForecastTable: React.FC<ForecastTableProps> = ({
   initialUsage,
-  aprilLaunchingPromo = false,
+  augustPromo = false,
   upgradeAutoBackupBox = false
 }) => {
   // Inputs
@@ -92,7 +92,7 @@ export const ForecastTable: React.FC<ForecastTableProps> = ({
 
     // Calculate System Cost
     const costData = calculateSystemCost(panelCount, batteryCount, phase, {
-      aprilLaunchingPromo,
+      augustPromo,
       backupBoxUpgrade: upgradeAutoBackupBox
     });
     const systemCost = costData ? costData.cash : 0;
@@ -214,7 +214,7 @@ export const ForecastTable: React.FC<ForecastTableProps> = ({
     }
     
     return data;
-  }, [usageKwh, panelCount, batteryCount, daytimePercent, phase, remainSameTariff, aprilLaunchingPromo, upgradeAutoBackupBox]);
+  }, [usageKwh, panelCount, batteryCount, daytimePercent, phase, remainSameTariff, augustPromo, upgradeAutoBackupBox]);
 
   const totalKwp = (panelCount * (PANEL_WATTAGE/1000)).toFixed(2);
 
