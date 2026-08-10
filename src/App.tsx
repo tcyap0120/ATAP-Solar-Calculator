@@ -12,7 +12,7 @@ import { DocForm } from './components/DocForm';
 import { ForecastTable } from './components/ForecastTable';
 import { DayNightCalculator } from './components/DayNightCalculator';
 import { SubmissionChecklist } from './components/SubmissionChecklist';
-import { BATTERY_COST_CASH, PANEL_WATTAGE, BATTERY_CAPACITY_KWH, AUGUST_PROMO_BATTERY_UNIT_DISCOUNT } from './constants';
+import { BATTERY_COST_CASH, PANEL_WATTAGE, BATTERY_CAPACITY_KWH, AUGUST_PROMO_BATTERY_UNIT_DISCOUNT, SINGLE_PHASE_MAX_PANELS } from './constants';
 import { Zap, Sun, Battery, DollarSign, Leaf, Calculator, LayoutGrid, BarChart2, Activity, TrendingUp, AlertTriangle, RefreshCw, Download, Lock, ArrowRight, Home, FileText, Table, Menu, X, Building2, Clock, ClipboardCheck } from 'lucide-react';
 
 const CommercialSolarShell = lazy(() => import('./commercial/CommercialSolarShell'));
@@ -157,8 +157,8 @@ const App = () => {
 
   // System Cost Calculation for Calculator Tab
   const systemCost = useMemo(() => {
-    // Single-phase sheet runs to 21 panels; above that use three-phase tier pricing.
-    const estimatedPhase = panelCount > 21 ? 'three' : 'single';
+    // Single-phase sheet runs to 24 panels; above that use three-phase tier pricing.
+    const estimatedPhase = panelCount > SINGLE_PHASE_MAX_PANELS ? 'three' : 'single';
     return calculateSystemCost(panelCount, batteryCount, estimatedPhase, {
       augustPromo,
       backupBoxUpgrade: upgradeAutoBackupBox,
@@ -550,7 +550,7 @@ const App = () => {
                       </div>
                     )}
                     <div className="text-[10px] text-slate-400 pt-2 border-t border-slate-50 text-center">
-                      Based on {panelCount > 21 ? '3-Phase' : 'Single Phase'} Inverter
+                      Based on {panelCount > SINGLE_PHASE_MAX_PANELS ? '3-Phase' : 'Single Phase'} Inverter
                     </div>
                   </div>
                 </div>

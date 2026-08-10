@@ -96,7 +96,7 @@ export const DocForm: React.FC<DocFormProps> = ({
     if (isNaN(size) || size === 0) return null;
     
     // Updated Validation Rule: 
-    // Single Phase meter: up to 8 kWac per residential sheet (21 panels)
+    // Single Phase meter: up to 8 kWac per residential sheet (24 panels)
     // Three Phase meter: Max Inverter 15kW (40 panels)
     if (meterPhase === 'Single' && size > 8) {
       return "Max 8kW for Single Phase";

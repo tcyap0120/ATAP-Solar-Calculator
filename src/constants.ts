@@ -77,6 +77,12 @@ export const AUGUST_PROMO_BATTERY_UNIT_DISCOUNT = 1200;
 export const AUGUST_PROMO_AUTO_BACKUP_BOX_SINGLE_PHASE_RM = 800;
 export const AUGUST_PROMO_AUTO_BACKUP_BOX_THREE_PHASE_RM = 1500;
 
+/**
+ * Highest panel count the single-phase sheet prices (8 kWac single-phase inverter).
+ * Above this, only three-phase tier pricing exists.
+ */
+export const SINGLE_PHASE_MAX_PANELS = 24;
+
 // System Pricing Database
 export const SYSTEM_PRICING: PricingTier[] = [
   { panels: 4, kwp: 2.60, inverterSize: "5 kWac Single Phase", cashPrice: 13886, ccPrice: 15020, threePhaseCashPrice: 18238, threePhaseCcPrice: 19720, threePhaseInverterSize: "5 kWac Three Phase" },
