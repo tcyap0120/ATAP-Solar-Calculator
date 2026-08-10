@@ -74,9 +74,13 @@ export const AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT = 1000;
 /** Per-battery discount. */
 export const AUGUST_PROMO_BATTERY_UNIT_DISCOUNT = 1200;
 
-/** August Promo — optional Auto BackupBox upgrade when 1+ batteries (same RM on cash & CC; system only, not per battery). */
-export const AUGUST_PROMO_AUTO_BACKUP_BOX_SINGLE_PHASE_RM = 800;
-export const AUGUST_PROMO_AUTO_BACKUP_BOX_THREE_PHASE_RM = 1500;
+/**
+ * Optional Auto BackupBox upgrade, offered as an Add-On on each recommendation card. Only
+ * meaningful with 1+ batteries, where the manual backup box is already in the price — so this is
+ * the increment from manual to auto, charged once per system, not per battery.
+ */
+export const AUTO_BACKUP_BOX_UPGRADE_SINGLE_PHASE_RM = 800;
+export const AUTO_BACKUP_BOX_UPGRADE_THREE_PHASE_RM = 1500;
 
 /**
  * Highest panel count the single-phase sheet prices (8 kWac single-phase inverter).

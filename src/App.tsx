@@ -8,11 +8,11 @@ import { EnergyChart } from './components/EnergyChart';
 import { PlanRecommender } from './components/PlanRecommender';
 import { SavingsGraphGenerator } from './components/SavingsGraphGenerator';
 import { DailyFlowDiagram } from './components/DailyFlowDiagram';
-import { DocForm } from './components/DocForm';
+import { InfoDocs } from './components/InfoDocs';
 import { ForecastTable } from './components/ForecastTable';
 import { DayNightCalculator } from './components/DayNightCalculator';
 import { SubmissionChecklist } from './components/SubmissionChecklist';
-import { BATTERY_COST_CASH, PANEL_WATTAGE, BATTERY_CAPACITY_KWH, AUGUST_PROMO_BATTERY_UNIT_DISCOUNT, SINGLE_PHASE_MAX_PANELS } from './constants';
+import { PANEL_WATTAGE, BATTERY_CAPACITY_KWH, SINGLE_PHASE_MAX_PANELS } from './constants';
 import { Zap, Sun, Battery, DollarSign, Leaf, Calculator, LayoutGrid, BarChart2, Activity, TrendingUp, AlertTriangle, RefreshCw, Download, Lock, ArrowRight, Home, FileText, Table, Menu, X, Building2, Clock, ClipboardCheck } from 'lucide-react';
 
 const CommercialSolarShell = lazy(() => import('./commercial/CommercialSolarShell'));
@@ -24,9 +24,11 @@ const App = () => {
   const [authError, setAuthError] = useState(false);
 
   // Navigation State with Persistence
-  const [activeTab, setActiveTab] = useState<'calculator' | 'planner' | 'graphs' | 'daily' | 'forms' | 'forecast' | 'daynight' | 'checklist' | 'commercial'>(() => {
+  const [activeTab, setActiveTab] = useState<'calculator' | 'planner' | 'graphs' | 'daily' | 'infodocs' | 'forecast' | 'daynight' | 'checklist' | 'commercial'>(() => {
     const saved = localStorage.getItem('solar_activeTab');
-    const ok = saved === 'calculator' || saved === 'planner' || saved === 'graphs' || saved === 'daily' || saved === 'forms' || saved === 'forecast' || saved === 'daynight' || saved === 'checklist' || saved === 'commercial';
+    // 'forms' deliberately absent — the Forms page is hidden, so anyone who left the app on it
+    // lands back on the recommender instead of a blank screen.
+    const ok = saved === 'calculator' || saved === 'planner' || saved === 'graphs' || saved === 'daily' || saved === 'infodocs' || saved === 'forecast' || saved === 'daynight' || saved === 'checklist' || saved === 'commercial';
     return ok ? saved : 'planner';
   });
 
@@ -64,12 +66,10 @@ const App = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [augustPromo, setAugustPromo] = useState(false);
-  const [upgradeAutoBackupBox, setUpgradeAutoBackupBox] = useState(false);
   const [suriaHomeRebate, setSuriaHomeRebate] = useState(false);
 
   const handleAugustPromoChange = (value: boolean) => {
     setAugustPromo(value);
-    if (!value) setUpgradeAutoBackupBox(false);
   };
 
   // Check for stored auth session
@@ -161,10 +161,9 @@ const App = () => {
     const estimatedPhase = panelCount > SINGLE_PHASE_MAX_PANELS ? 'three' : 'single';
     return calculateSystemCost(panelCount, batteryCount, estimatedPhase, {
       augustPromo,
-      backupBoxUpgrade: upgradeAutoBackupBox,
       suriaHomeRebate
     });
-  }, [panelCount, batteryCount, augustPromo, upgradeAutoBackupBox, suriaHomeRebate]);
+  }, [panelCount, batteryCount, augustPromo, suriaHomeRebate]);
 
   const savingsPercent = simulation.originalBill.finalTotal > 0
     ? (simulation.monthlySavings / simulation.originalBill.finalTotal) * 100
@@ -183,7 +182,7 @@ const App = () => {
     { id: 'graphs', label: 'Graph', icon: BarChart2 },
     { id: 'forecast', label: 'Forecast', icon: Table },
     { id: 'daily', label: 'Illustration', icon: Activity },
-    { id: 'forms', label: 'Forms', icon: FileText },
+    { id: 'infodocs', label: 'Info Docs', icon: FileText },
     { id: 'checklist', label: 'Submission Checklist', icon: ClipboardCheck },
   ] as const;
 
@@ -476,27 +475,10 @@ const App = () => {
                       <span>
                         <span className="font-bold">August Promo</span>
                         <span className="block text-xs text-amber-800/90 mt-0.5">
-                          No battery: single −RM800 / three-phase −RM1600 on system. With 1+ batteries: single −RM1800; three-phase −RM3000; −RM800 per battery (cash &amp; CC).
+                          No battery: −RM1000 on system. With 1+ batteries: −RM2200 on system, plus −RM1200 per battery. Same for single and three phase.
                         </span>
                       </span>
                     </label>
-                    {augustPromo && (
-                      <label className="ml-2 flex items-start gap-3 cursor-pointer rounded-xl border border-amber-200/80 bg-amber-50/50 px-4 py-3 text-sm text-amber-950">
-                        <input
-                          type="checkbox"
-                          checked={upgradeAutoBackupBox}
-                          onChange={e => setUpgradeAutoBackupBox(e.target.checked)}
-                          className="mt-0.5 h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
-                        />
-                        <span>
-                          <span className="font-bold">Upgrade to Auto BackupBox</span>
-                          <span className="block text-xs text-amber-800/90 mt-0.5">
-                            Only when ordering 1+ battery: +RM800 (single-phase) or +RM1500 (three-phase) on system cash
-                            &amp; CC (not on battery).
-                          </span>
-                        </span>
-                      </label>
-                    )}
                     <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-950">
                       <input
                         type="checkbox"
@@ -531,10 +513,10 @@ const App = () => {
                       <span className="text-slate-500 text-sm">Cash Price</span>
                       <span className="font-bold text-emerald-600 text-lg">RM {systemCost.cash.toLocaleString()}</span>
                     </div>
-                    {typeof systemCost.backupBoxUpgradeRM === 'number' && systemCost.backupBoxUpgradeRM > 0 && (
+                    {typeof systemCost.manualBackupBoxRM === 'number' && systemCost.manualBackupBoxRM > 0 && (
                       <div className="flex justify-between items-center text-xs text-slate-600 bg-slate-50 rounded-lg px-2 py-1.5">
-                        <span>Auto BackupBox upgrade</span>
-                        <span className="font-semibold">+RM {systemCost.backupBoxUpgradeRM.toLocaleString()}</span>
+                        <span>Manual backup box</span>
+                        <span className="font-semibold">+RM {systemCost.manualBackupBoxRM.toLocaleString()}</span>
                       </div>
                     )}
                     {typeof systemCost.augustPromoDiscount === 'number' && systemCost.augustPromoDiscount > 0 && (
@@ -654,8 +636,6 @@ const App = () => {
             initialUsage={typeof usageKwh === 'number' ? usageKwh : 0}
             augustPromo={augustPromo}
             onAugustPromoChange={handleAugustPromoChange}
-            upgradeAutoBackupBox={upgradeAutoBackupBox}
-            onUpgradeAutoBackupBoxChange={setUpgradeAutoBackupBox}
             suriaHomeRebate={suriaHomeRebate}
             onSuriaHomeRebateChange={setSuriaHomeRebate}
           />
@@ -669,7 +649,6 @@ const App = () => {
           <ForecastTable
             initialUsage={typeof usageKwh === 'number' ? usageKwh : 0}
             augustPromo={augustPromo}
-            upgradeAutoBackupBox={upgradeAutoBackupBox}
           />
         </div>
 
@@ -681,25 +660,11 @@ const App = () => {
           <DailyFlowDiagram initialUsage={typeof usageKwh === 'number' ? usageKwh : 0} />
         </div>
 
-        {/* DocForm - Rendered hidden when not active to preserve state */}
-        <div className={activeTab === 'forms' ? 'block' : 'hidden'}>
-          <DocForm
-            augustPromo={augustPromo}
-            upgradeAutoBackupBox={upgradeAutoBackupBox}
-            initialData={{
-              systemSize: Number(totalKwp),
-              panelCount: panelCount,
-              inverterSize: systemCost?.inverterSize,
-              systemPrice: systemCost?.cash,
-              systemCCPrice: systemCost?.cc,
-              batteryCount: batteryCount,
-              batteryCash:
-                batteryCount *
-                (augustPromo ? BATTERY_COST_CASH - AUGUST_PROMO_BATTERY_UNIT_DISCOUNT : BATTERY_COST_CASH),
-              annualGen: simulation.solarGenerationMonthly * 12,
-              monthlyGen: simulation.solarGenerationMonthly
-            }}
-          />
+        {/* Forms page is hidden. The DocForm component is left in src/components/DocForm.tsx so it
+            can be restored by re-adding the nav entry and this block. */}
+
+        <div className={activeTab === 'infodocs' ? 'block animate-in fade-in duration-300' : 'hidden'}>
+          <InfoDocs />
         </div>
 
         <div className={activeTab === 'checklist' ? 'block animate-in fade-in duration-300' : 'hidden'}>

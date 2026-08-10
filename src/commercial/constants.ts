@@ -1,5 +1,6 @@
 import { InverterBrand, MeterType, GlobalSettings, CalculatorSession, ReferencePrice } from './types';
 import { SYSTEM_PRICING, MANUAL_BACKUP_BOX_THREE_PHASE_RM } from '../constants';
+import { deriveCcFromCash } from '../utils/billingEngine';
 
 /** Bump when saved GlobalSettings need a one-time migration (e.g. brand automation defaults). */
 export const COMMERCIAL_SETTINGS_SCHEMA_VERSION = 5;
@@ -18,7 +19,7 @@ export function commercialReferencePricesFromResidential(): ReferencePrice[] {
     return {
       panels: t.panels,
       price: cash,
-      priceCC36: Math.ceil(cash / 0.925 / 10) * 10
+      priceCC36: deriveCcFromCash(cash)
     };
   });
 }

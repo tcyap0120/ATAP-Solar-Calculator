@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { simulateSolar, getKwhFromBill, calculateSystemCost, calculateBill, getAugustPromoDiscount } from '../utils/billingEngine';
+import { simulateSolar, getKwhFromBill, calculateSystemCost, calculateBill, getAugustPromoDiscount, deriveCcFromCash, deriveCc60FromCash } from '../utils/billingEngine';
 import { InputNumber } from './InputNumber';
 import { InputSlider } from './InputSlider';
-import { SYSTEM_PRICING, BATTERY_CAPACITY_KWH, BATTERY_NOMINAL_KWH, PEAK_SUN_HOURS, PANEL_WATTAGE } from '../constants';
+import { SYSTEM_PRICING, BATTERY_CAPACITY_KWH, BATTERY_NOMINAL_KWH, PEAK_SUN_HOURS, PANEL_WATTAGE, AUTO_BACKUP_BOX_UPGRADE_SINGLE_PHASE_RM, AUTO_BACKUP_BOX_UPGRADE_THREE_PHASE_RM } from '../constants';
 import { Zap, Sun, DollarSign, Home, Check, Battery, Info, BarChart3, PiggyBank, Target, PenTool, ShieldCheck, Compass, ChevronDown, ChevronUp, TrendingUp, AlertTriangle, RefreshCw, MessageCircle, Copy, X, Plus, Minus, Table2, Download, Globe, User, Phone, ArrowUpCircle, CheckCircle2 } from 'lucide-react';
 import { RecommendationResult } from '../types';
 import html2canvas from 'html2canvas';
@@ -12,8 +12,6 @@ interface PlanRecommenderProps {
   initialUsage: number;
   augustPromo: boolean;
   onAugustPromoChange: (value: boolean) => void;
-  upgradeAutoBackupBox: boolean;
-  onUpgradeAutoBackupBoxChange: (value: boolean) => void;
   suriaHomeRebate: boolean;
   onSuriaHomeRebateChange: (value: boolean) => void;
 }
@@ -28,7 +26,6 @@ const calculateScenario = (
   billAmount: number,
   gapWarning: boolean,
   augustPromo: boolean,
-  backupBoxUpgrade: boolean,
   suriaHomeRebate: boolean = false,
   skipInverterUpgrade: boolean = false
 ): RecommendationResult | null => {
@@ -42,7 +39,6 @@ const calculateScenario = (
   const sim = simulateSolar(effectiveUsage, daytimePercent, p, b);
   const costs = calculateSystemCost(p, b, phase, {
     augustPromo,
-    backupBoxUpgrade,
     suriaHomeRebate,
     skipInverterUpgrade
   });
@@ -91,8 +87,6 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
   initialUsage,
   augustPromo,
   onAugustPromoChange,
-  upgradeAutoBackupBox,
-  onUpgradeAutoBackupBoxChange,
   suriaHomeRebate,
   onSuriaHomeRebateChange
 }) => {
@@ -200,7 +194,6 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
           typeof billAmount === 'number' ? billAmount : 0,
           gapWarning,
           augustPromo,
-          upgradeAutoBackupBox,
           suriaHomeRebate
         );
 
@@ -297,7 +290,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
 
     return { lowestBreakeven, mediumOffset, highOffset, matchKwh, maxSaving, batteryPlans };
 
-  }, [usageKwh, phase, daytimePercent, roofMaxPanels, billAmount, gapWarning, augustPromo, upgradeAutoBackupBox, suriaHomeRebate]);
+  }, [usageKwh, phase, daytimePercent, roofMaxPanels, billAmount, gapWarning, augustPromo, suriaHomeRebate]);
 
   // Handle plan updates from cards
   const handleUpdatePlan = useCallback((id: string, newResult: RecommendationResult) => {
@@ -318,10 +311,9 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       typeof billAmount === 'number' ? billAmount : 0,
       gapWarning,
       augustPromo,
-      upgradeAutoBackupBox,
       suriaHomeRebate
     );
-  }, [manualPanels, manualBatteries, usageKwh, phase, daytimePercent, billAmount, gapWarning, augustPromo, upgradeAutoBackupBox, suriaHomeRebate]);
+  }, [manualPanels, manualBatteries, usageKwh, phase, daytimePercent, billAmount, gapWarning, augustPromo, suriaHomeRebate]);
 
 
   // Filter selections based on current mode
@@ -464,7 +456,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       const kwpNum = (r.panels * PANEL_WATTAGE) / 1000;
       const kwp = kwpNum.toFixed(2);
       const listPriceCCBeforePromo = augustPromo
-        ? r.systemCostCC + getAugustPromoDiscount(r.batteries)
+        ? deriveCcFromCash(r.systemCostCash + getAugustPromoDiscount(r.batteries))
         : 0;
 
       const batteryTotalKwhNominal = r.batteries * BATTERY_NOMINAL_KWH;
@@ -488,8 +480,9 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
 
       // When SuRIA rebate is active the stored prices already have the rebate deducted; show pre-rebate first, then after-rebate.
       const suriaRebateAmt = r.suriaRebate ?? 3000;
-      const ccBeforeRebate = suriaHomeRebate ? r.systemCostCC + suriaRebateAmt : r.systemCostCC;
       const cashBeforeRebate = suriaHomeRebate ? r.systemCostCash + suriaRebateAmt : r.systemCostCash;
+      // Derived from the pre-rebate CASH, not the post-rebate CC plus the rebate.
+      const ccBeforeRebate = suriaHomeRebate ? deriveCcFromCash(cashBeforeRebate) : r.systemCostCC;
 
       if (lang === 'zh') {
         msg += `📌每月预计节省电费：约 RM${roundedMonthlySavings}+-\n`;
@@ -539,7 +532,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
     }
 
     return msg;
-  }, [recommendations, manualResult, currentModeSelectedPlans, getActivePlanData, billAmount, usageKwh, daytimePercent, phase, roofMaxPanels, selectionRule, augustPromo, upgradeAutoBackupBox, suriaHomeRebate]);
+  }, [recommendations, manualResult, currentModeSelectedPlans, getActivePlanData, billAmount, usageKwh, daytimePercent, phase, roofMaxPanels, selectionRule, augustPromo, suriaHomeRebate]);
 
   // Keep WhatsApp message in sync: if settings change while the modal is open, regenerate.
   useEffect(() => {
@@ -790,29 +783,11 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
               <span className="font-bold">{language === 'zh' ? '八月促销' : 'August Promo'}</span>
               <span className="block text-xs text-amber-800/90 mt-0.5">
                 {language === 'zh'
-                  ? '无电池：单相减 RM800、三相减 RM1600（系统）。有电池：单相减 RM1800、三相减 RM3000；每粒电池减 RM800（现金与分期相同）。'
-                  : 'No battery: −RM800 single / −RM1600 three-phase on system. With 1+ batteries: −RM1800 / −RM3000 on system; −RM800 per battery (same on cash & CC).'}
+                  ? '无电池：系统减 RM1000。有电池：系统减 RM2200；每粒电池另减 RM1200。单相与三相相同。'
+                  : 'No battery: −RM1000 on system. With 1+ batteries: −RM2200 on system, plus −RM1200 per battery. Same for single and three phase.'}
               </span>
             </span>
           </label>
-          {augustPromo && (
-            <label className="ml-1 flex items-start gap-3 cursor-pointer rounded-xl border border-amber-200/80 bg-amber-50/50 px-4 py-3 text-sm text-amber-950">
-              <input
-                type="checkbox"
-                checked={upgradeAutoBackupBox}
-                onChange={e => onUpgradeAutoBackupBoxChange(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
-              />
-              <span>
-                <span className="font-bold">{language === 'zh' ? '升级 Auto BackupBox' : 'Upgrade to Auto BackupBox'}</span>
-                <span className="block text-xs text-amber-800/90 mt-0.5">
-                  {language === 'zh'
-                    ? '仅在有 1 台或以上电池时适用：系统加价单相 RM800、三相 RM1500（现金与分期相同；不含电池单价）。'
-                    : 'Only with 1+ battery: +RM800 single-phase / +RM1500 three-phase on system cash & CC (not on battery).'}
-                </span>
-              </span>
-            </label>
-          )}
           <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-950">
             <input
               type="checkbox"
@@ -923,7 +898,6 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
                 gapWarning={gapWarning}
                 augustPromo={augustPromo}
-                upgradeAutoBackupBox={upgradeAutoBackupBox}
                 suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
               />
@@ -945,7 +919,6 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
                 gapWarning={gapWarning}
                 augustPromo={augustPromo}
-                upgradeAutoBackupBox={upgradeAutoBackupBox}
                 suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
               />
@@ -967,7 +940,6 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
                 gapWarning={gapWarning}
                 augustPromo={augustPromo}
-                upgradeAutoBackupBox={upgradeAutoBackupBox}
                 suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
               />
@@ -989,7 +961,6 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
                 gapWarning={gapWarning}
                 augustPromo={augustPromo}
-                upgradeAutoBackupBox={upgradeAutoBackupBox}
                 suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
               />
@@ -1011,7 +982,6 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
                 gapWarning={gapWarning}
                 augustPromo={augustPromo}
-                upgradeAutoBackupBox={upgradeAutoBackupBox}
                 suriaHomeRebate={suriaHomeRebate}
                 onUpdate={handleUpdatePlan}
               />
@@ -1048,7 +1018,6 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                   usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
                   gapWarning={gapWarning}
                   augustPromo={augustPromo}
-                  upgradeAutoBackupBox={upgradeAutoBackupBox}
                   suriaHomeRebate={suriaHomeRebate}
                   onUpdate={handleUpdatePlan}
                 />
@@ -1109,7 +1078,6 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
                 gapWarning={gapWarning}
                 augustPromo={augustPromo}
-                upgradeAutoBackupBox={upgradeAutoBackupBox}
                 suriaHomeRebate={suriaHomeRebate}
               />
             ) : (
@@ -1209,14 +1177,37 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
 
 // --- Sub-Components ---
 
-// Stackable add-on item. Optimizer = RM700 base + RM170/panel; Concrete Structure = RM200/panel.
-type AddOnItem = { id: number; type: 'optimizer' | 'concrete'; panels: number | '' };
-const ADD_ON_LABEL: Record<AddOnItem['type'], string> = {
+// Stackable add-on item.
+//   Optimizer          — RM700 base + RM170/panel
+//   Concrete Structure — RM200/panel
+//   Auto BackupBox     — flat per system (phase-dependent), needs 1+ battery, max one per card
+type AddOnType = 'optimizer' | 'concrete' | 'autoBackupBox';
+type AddOnItem = { id: number; type: AddOnType; panels: number | '' };
+
+const ADD_ON_LABEL: Record<AddOnType, string> = {
   optimizer: 'Optimizer',
   concrete: 'Concrete Structure',
+  autoBackupBox: 'Auto BackupBox',
 };
-const addOnItemCost = (type: AddOnItem['type'], panels: number): number =>
-  panels > 0 ? (type === 'optimizer' ? 700 + 170 * panels : 200 * panels) : 0;
+
+/** Auto BackupBox is flat and per-system; the other two are priced per panel. */
+const isPerPanelAddOn = (type: AddOnType) => type !== 'autoBackupBox';
+
+const addOnItemCost = (type: AddOnType, panels: number, phase: 'single' | 'three'): number => {
+  if (type === 'autoBackupBox') {
+    return phase === 'single'
+      ? AUTO_BACKUP_BOX_UPGRADE_SINGLE_PHASE_RM
+      : AUTO_BACKUP_BOX_UPGRADE_THREE_PHASE_RM;
+  }
+  if (panels <= 0) return 0;
+  return type === 'optimizer' ? 700 + 170 * panels : 200 * panels;
+};
+
+const addOnPriceHint = (type: AddOnType, phase: 'single' | 'three'): string => {
+  if (type === 'autoBackupBox')
+    return `flat · upgrade from manual box (${phase === 'single' ? 'single' : 'three'}-phase)`;
+  return type === 'optimizer' ? 'panels · RM700 + RM170/panel' : 'panels · RM200/panel';
+};
 
 interface RecommendationCardProps {
   id: string;
@@ -1233,7 +1224,6 @@ interface RecommendationCardProps {
   usageKwh: number;
   gapWarning: boolean;
   augustPromo: boolean;
-  upgradeAutoBackupBox: boolean;
   suriaHomeRebate: boolean;
   onUpdate?: (id: string, newResult: RecommendationResult) => void;
 }
@@ -1241,7 +1231,7 @@ interface RecommendationCardProps {
 const RecommendationCard: React.FC<RecommendationCardProps> = ({
   id, title, result: initialResult, badge, badgeColor, icon,
   currentBill, daytimePercent, isSelected, onToggle,
-  phase, usageKwh, gapWarning, augustPromo, upgradeAutoBackupBox, suriaHomeRebate, onUpdate
+  phase, usageKwh, gapWarning, augustPromo, suriaHomeRebate, onUpdate
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -1254,16 +1244,34 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   // Tracks the upgrade the user manually removed (null = upgrade active / not applicable)
   const [removedUpgrade, setRemovedUpgrade] = useState<{ toSize: string; cost: number } | null>(null);
 
-  // Stackable per-card add-ons (Optimizer / Concrete Structure). Each adds to cash; CC re-derived.
+  // 60-month CC price is opt-in: hidden until the agent reveals it.
+  const [show60mCC, setShow60mCC] = useState(false);
+
+  // Stackable per-card add-ons. Each adds to cash; CC re-derived from the total.
   const addOnSeq = useRef(0);
   const [addOns, setAddOns] = useState<AddOnItem[]>([]);
+
+  const batteryCount = typeof batteries === 'number' ? batteries : 0;
+  const canAddAutoBackupBox = batteryCount >= 1;
+
+  // Auto BackupBox only exists alongside a battery. If the user drops the battery count to zero,
+  // drop the add-on too rather than silently keep charging for it.
+  useEffect(() => {
+    if (!canAddAutoBackupBox) {
+      setAddOns(prev =>
+        prev.some(a => a.type === 'autoBackupBox')
+          ? prev.filter(a => a.type !== 'autoBackupBox')
+          : prev
+      );
+    }
+  }, [canAddAutoBackupBox]);
 
   // Sync state if base props change significantly
   useEffect(() => {
     setPanels(initialResult.panels);
     setBatteries(initialResult.batteries);
     setResult(initialResult);
-  }, [initialResult.panels, initialResult.batteries, initialResult.systemCostCash, initialResult.systemCostCC, augustPromo, upgradeAutoBackupBox]);
+  }, [initialResult.panels, initialResult.batteries, initialResult.systemCostCash, initialResult.systemCostCC, augustPromo]);
 
   const resultRef = useRef(result);
   resultRef.current = result;
@@ -1275,7 +1283,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     if (p < 6) return;
 
     const newRes = calculateScenario(
-      p, b, usageKwh, daytimePercent, phase, currentBill, gapWarning, augustPromo, upgradeAutoBackupBox, suriaHomeRebate, removedUpgrade !== null
+      p, b, usageKwh, daytimePercent, phase, currentBill, gapWarning, augustPromo, suriaHomeRebate, removedUpgrade !== null
     );
     if (!newRes) return;
 
@@ -1290,20 +1298,19 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     if (sameDims && samePrice && sameSavings) return;
 
     setResult(newRes);
-  }, [panels, batteries, usageKwh, daytimePercent, phase, currentBill, gapWarning, augustPromo, upgradeAutoBackupBox, suriaHomeRebate, id, onUpdate, removedUpgrade]);
+  }, [panels, batteries, usageKwh, daytimePercent, phase, currentBill, gapWarning, augustPromo, suriaHomeRebate, id, onUpdate, removedUpgrade]);
 
   // Total add-on price = sum of all stacked items.
   const addOnCost = useMemo(
-    () => addOns.reduce((sum, a) => sum + addOnItemCost(a.type, typeof a.panels === 'number' ? a.panels : 0), 0),
-    [addOns]
+    () => addOns.reduce((sum, a) => sum + addOnItemCost(a.type, typeof a.panels === 'number' ? a.panels : 0, phase), 0),
+    [addOns, phase]
   );
 
-  // Result shown on the card: base system + add-on folded into cash, then CC re-derived
-  // (ceil to nearest RM10 at /0.925) along with the price-based metrics.
+  // Result shown on the card: add-on folded into cash first, then CC re-derived from it.
   const viewResult = useMemo<RecommendationResult>(() => {
     if (addOnCost <= 0) return result;
     const cash = result.systemCostCash + addOnCost;
-    const cc = Math.ceil(cash / 0.925 / 10) * 10;
+    const cc = deriveCcFromCash(cash);
     const annualSavings = result.monthlySavings * 12;
     return {
       ...result,
@@ -1332,6 +1339,11 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   const removeAddOn = (itemId: number) => setAddOns(prev => prev.filter(a => a.id !== itemId));
   const updateAddOn = (itemId: number, patch: Partial<AddOnItem>) =>
     setAddOns(prev => prev.map(a => (a.id === itemId ? { ...a, ...patch } : a)));
+
+  // Auto BackupBox is one-per-system, so hide it from a row's dropdown once another row has it.
+  const autoBackupBoxTakenBy = addOns.find(a => a.type === 'autoBackupBox')?.id ?? null;
+  const canPickAutoBackupBox = (rowId: number) =>
+    canAddAutoBackupBox && (autoBackupBoxTakenBy === null || autoBackupBoxTakenBy === rowId);
 
   // Roof angles the inverter can support, by AC rating:
   //   3.6 / 5 / 6 / 8 kWac → 2,  10 / 12 kWac → 3,  15 kWac → 4.
@@ -1536,18 +1548,22 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
               <div className="space-y-2">
                 {addOns.map((a) => {
                   const qty = typeof a.panels === 'number' ? a.panels : 0;
-                  const cost = addOnItemCost(a.type, qty);
+                  const cost = addOnItemCost(a.type, qty, phase);
+                  const perPanel = isPerPanelAddOn(a.type);
                   return (
                     <div key={a.id} className="bg-white border border-slate-200 rounded-xl p-2 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
                       <div className="flex items-center gap-2">
                         <div className="relative flex-1">
                           <select
                             value={a.type}
-                            onChange={(e) => updateAddOn(a.id, { type: e.target.value as AddOnItem['type'] })}
+                            onChange={(e) => updateAddOn(a.id, { type: e.target.value as AddOnType })}
                             className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-2.5 pr-8 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 appearance-none cursor-pointer"
                           >
                             <option value="optimizer">Optimizer</option>
                             <option value="concrete">Concrete Structure</option>
+                            {canPickAutoBackupBox(a.id) && (
+                              <option value="autoBackupBox">Auto BackupBox</option>
+                            )}
                           </select>
                           <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" />
                         </div>
@@ -1560,16 +1576,18 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
                         </button>
                       </div>
                       <div className="mt-2 flex items-center gap-2">
-                        <input
-                          type="number"
-                          min={0}
-                          value={a.panels}
-                          onChange={(e) => updateAddOn(a.id, { panels: e.target.value === '' ? '' : parseInt(e.target.value) })}
-                          onWheel={(e) => e.currentTarget.blur()}
-                          className="w-16 h-9 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-slate-800 outline-none focus:border-blue-400"
-                        />
+                        {perPanel && (
+                          <input
+                            type="number"
+                            min={0}
+                            value={a.panels}
+                            onChange={(e) => updateAddOn(a.id, { panels: e.target.value === '' ? '' : parseInt(e.target.value) })}
+                            onWheel={(e) => e.currentTarget.blur()}
+                            className="w-16 h-9 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-slate-800 outline-none focus:border-blue-400"
+                          />
+                        )}
                         <span className="text-[11px] text-slate-400 flex-1">
-                          panels · {a.type === 'optimizer' ? 'RM700 + RM170/panel' : 'RM200/panel'}
+                          {addOnPriceHint(a.type, phase)}
                         </span>
                         <span className="font-mono font-bold text-sm text-blue-700">+RM {cost.toLocaleString()}</span>
                       </div>
@@ -1682,11 +1700,11 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
 
           {addOns.map((a) => {
             const qty = typeof a.panels === 'number' ? a.panels : 0;
-            const cost = addOnItemCost(a.type, qty);
+            const cost = addOnItemCost(a.type, qty, phase);
             if (cost <= 0) return null;
             return (
               <div key={a.id} className="flex justify-between text-xs items-center text-slate-500">
-                <span>+ {ADD_ON_LABEL[a.type]} ({qty} panels)</span>
+                <span>+ {ADD_ON_LABEL[a.type]}{isPerPanelAddOn(a.type) ? ` (${qty} panels)` : ''}</span>
                 <span className="font-mono font-semibold">+RM {cost.toLocaleString()}</span>
               </div>
             );
@@ -1704,6 +1722,38 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             <span className="text-slate-500 font-bold">Cash Price</span>
             <span className="font-mono font-bold text-emerald-600 text-lg">RM {viewResult.systemCostCash.toLocaleString()}</span>
           </div>
+
+          {/* 60-month CC plan — hidden by default, revealed on click. */}
+          {show60mCC ? (
+            <div className="mt-2 pt-2 border-t border-dashed border-slate-200">
+              <button
+                onClick={() => setShow60mCC(false)}
+                className="w-full flex justify-between text-sm items-center group"
+                title="Hide 60m CC price"
+              >
+                <span className="text-slate-500 flex items-center gap-1">
+                  60m CC Price
+                  <ChevronUp size={12} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
+                </span>
+                <span className="font-mono font-bold text-slate-800 text-lg">
+                  RM {deriveCc60FromCash(viewResult.systemCostCash).toLocaleString()}
+                </span>
+              </button>
+              <div className="flex justify-between text-sm items-center">
+                <span className="text-slate-500">Installment (60m)</span>
+                <span className="font-mono text-slate-500 text-xs">
+                  RM {(deriveCc60FromCash(viewResult.systemCostCash) / 60).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo
+                </span>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShow60mCC(true)}
+              className="mt-2 w-full inline-flex items-center justify-center gap-1 rounded-lg border border-dashed border-slate-200 py-1.5 text-[11px] font-semibold text-slate-400 hover:border-slate-300 hover:text-slate-600 transition-colors"
+            >
+              Show 60m CC Price <ChevronDown size={12} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -2183,8 +2233,9 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
                     const ccAfter = item.data.systemCostCC;
                     const cashAfter = item.data.systemCostCash;
                     const rebateAmt = item.data.suriaRebate ?? 3000;
-                    const ccBefore = suriaHomeRebate ? ccAfter + rebateAmt : ccAfter;
                     const cashBefore = suriaHomeRebate ? cashAfter + rebateAmt : cashAfter;
+                    // Derived from the pre-rebate CASH, not the post-rebate CC plus the rebate.
+                    const ccBefore = suriaHomeRebate ? deriveCcFromCash(cashBefore) : ccAfter;
                     return (
                       <td key={idx} className="p-2 sm:p-4 align-top">
                         <div className="space-y-3 sm:space-y-4">

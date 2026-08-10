@@ -22,9 +22,7 @@ import {
   THREE_PHASE_INVERTER_UPGRADE_5_TO_8KW_RM,
   THREE_PHASE_INVERTER_UPGRADE_8_TO_10KW_RM,
   THREE_PHASE_INVERTER_UPGRADE_10_TO_12KW_RM,
-  THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM,
-  AUGUST_PROMO_AUTO_BACKUP_BOX_SINGLE_PHASE_RM,
-  AUGUST_PROMO_AUTO_BACKUP_BOX_THREE_PHASE_RM
+  THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM
 } from '../constants';
 import { BillBreakdown, SimulationResult, PricingTier } from '../types';
 
@@ -271,13 +269,26 @@ export const getKwhFromBill = (targetBill: number): number => {
 
 export interface CalculateSystemCostOptions {
   augustPromo?: boolean;
-  /** With August Promo, 1+ batteries, and ticked: flat add-on to system cash/CC (not per battery). */
-  backupBoxUpgrade?: boolean;
   /** SuRIA Home government rebate: flat −RM3000 off both cash and CC price. */
   suriaHomeRebate?: boolean;
   /** When true, skips all auto-inverter upgrade logic and uses the sheet inverter size as-is. */
   skipInverterUpgrade?: boolean;
 }
+
+/**
+ * THE single cash -> CC conversion. Everything — add-ons, batteries, inverter upgrades, promo
+ * discounts, rebates — is applied to the CASH price first; the CC price is then derived from that
+ * final figure with this function. Never add to or subtract from a CC price directly: to show a
+ * "before discount" CC, derive it from the corresponding "before discount" CASH.
+ */
+export const CC_DIVISOR = 0.925;
+export const deriveCcFromCash = (cash: number): number =>
+  Math.ceil(cash / CC_DIVISOR / 10) * 10;
+
+/** 60-month credit-card plan: same derivation, lower divisor. */
+export const CC_60M_DIVISOR = 0.9;
+export const deriveCc60FromCash = (cash: number): number =>
+  Math.ceil(cash / CC_60M_DIVISOR / 10) * 10;
 
 /** System-level RM discount when the August Promo is active. */
 export const getAugustPromoSystemDiscount = (batteries: number): number =>
@@ -412,20 +423,12 @@ export const calculateSystemCost = (
 
   const batCash = batteries * BATTERY_COST_CASH;
 
-  const backupBoxUpgradeActive = Boolean(
-    options?.augustPromo &&
-      options?.backupBoxUpgrade &&
-      hasBattery
-  );
-  const backupBoxUpgradeRM = backupBoxUpgradeActive
-    ? phase === 'single'
-      ? AUGUST_PROMO_AUTO_BACKUP_BOX_SINGLE_PHASE_RM
-      : AUGUST_PROMO_AUTO_BACKUP_BOX_THREE_PHASE_RM
-    : 0;
-
-  // All add-ons (manual backup box, batteries, inverter upgrade, auto-backup-box upgrade) build
-  // up the cash price; the CC price is derived from it further down.
-  let cash = cashPrice + manualBackupBoxRM + batCash + upgradeCost + backupBoxUpgradeRM;
+  // The Auto BackupBox upgrade is no longer handled here — it is a per-card Add-On
+  // (see AUTO_BACKUP_BOX_UPGRADE_*_RM and AddOnItem in PlanRecommender).
+  //
+  // Manual backup box, batteries and any inverter upgrade build up the cash price; the CC price
+  // is derived from it further down.
+  let cash = cashPrice + manualBackupBoxRM + batCash + upgradeCost;
 
   let augustPromoSystemDiscount = 0;
   let augustPromoBatteryDiscount = 0;
@@ -440,10 +443,9 @@ export const calculateSystemCost = (
     : 0;
   cash -= suriaRebate;
 
-  // CC (36-month installment) price is ALWAYS ceil(cash / 0.925) rounded UP to the nearest RM10,
-  // with NO exceptions — every add-on and every discount lands on cash first, and cc follows from
-  // the final figure. Nothing may be deducted from cash after this line.
-  const cc = Math.ceil(cash / 0.925 / 10) * 10;
+  // Every add-on and every discount has now landed on cash. Nothing may change cash after this
+  // line — the CC price follows from the final figure.
+  const cc = deriveCcFromCash(cash);
 
   const augustPromoDiscount = augustPromoSystemDiscount + augustPromoBatteryDiscount;
 
@@ -457,7 +459,6 @@ export const calculateSystemCost = (
     upgradeCost,
     manualBackupBoxRM: manualBackupBoxRM > 0 ? manualBackupBoxRM : undefined,
     augustPromoDiscount: options?.augustPromo ? augustPromoDiscount : undefined,
-    backupBoxUpgradeRM: backupBoxUpgradeRM > 0 ? backupBoxUpgradeRM : undefined,
     suriaRebate: suriaRebate > 0 ? suriaRebate : undefined
   };
 };

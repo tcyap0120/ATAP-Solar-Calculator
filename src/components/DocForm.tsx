@@ -7,7 +7,6 @@ import { FileText, RefreshCw, User, Briefcase, Phone, Mail, MapPin, Zap, Battery
 
 interface DocFormProps {
   augustPromo?: boolean;
-  upgradeAutoBackupBox?: boolean;
   initialData?: {
     systemSize?: number;
     panelCount?: number;
@@ -40,7 +39,6 @@ const InputText = ({ label, value, onChange, icon, fullWidth, placeholder }: any
 export const DocForm: React.FC<DocFormProps> = ({
   initialData,
   augustPromo = false,
-  upgradeAutoBackupBox = false
 }) => {
   // Agent Details
   const [agentName, setAgentName] = useState('');
@@ -117,7 +115,6 @@ export const DocForm: React.FC<DocFormProps> = ({
     const phaseKey = phase === 'Three' ? 'three' : 'single';
     const cost = calculateSystemCost(panels, batteries, phaseKey, {
       augustPromo,
-      backupBoxUpgrade: upgradeAutoBackupBox
     });
     
     if (cost) {
@@ -197,7 +194,7 @@ export const DocForm: React.FC<DocFormProps> = ({
     const qty = typeof batteryQty === 'number' ? batteryQty : 0;
     if (panels >= 6) updatePricing(panels, qty, meterPhase);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- promo toggle should refresh prices only
-  }, [augustPromo, upgradeAutoBackupBox]);
+  }, [augustPromo]);
 
   // --- End Auto-Sync Logic ---
 
