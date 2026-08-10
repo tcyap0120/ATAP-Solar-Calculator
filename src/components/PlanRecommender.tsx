@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { simulateSolar, getKwhFromBill, calculateSystemCost, calculateBill, getAugustPromoSystemDiscount } from '../utils/billingEngine';
+import { simulateSolar, getKwhFromBill, calculateSystemCost, calculateBill, getAugustPromoDiscount } from '../utils/billingEngine';
 import { InputNumber } from './InputNumber';
 import { InputSlider } from './InputSlider';
 import { SYSTEM_PRICING, BATTERY_CAPACITY_KWH, BATTERY_NOMINAL_KWH, PEAK_SUN_HOURS, PANEL_WATTAGE } from '../constants';
@@ -463,9 +463,8 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       const roundedAnnualSavings = roundedMonthlySavings * 12;
       const kwpNum = (r.panels * PANEL_WATTAGE) / 1000;
       const kwp = kwpNum.toFixed(2);
-      // Only the system discount reaches the CC price, so only that part is added back here.
       const listPriceCCBeforePromo = augustPromo
-        ? r.systemCostCC + getAugustPromoSystemDiscount(r.batteries)
+        ? r.systemCostCC + getAugustPromoDiscount(r.batteries)
         : 0;
 
       const batteryTotalKwhNominal = r.batteries * BATTERY_NOMINAL_KWH;

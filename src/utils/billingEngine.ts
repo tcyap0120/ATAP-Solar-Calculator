@@ -279,23 +279,20 @@ export interface CalculateSystemCostOptions {
   skipInverterUpgrade?: boolean;
 }
 
-/**
- * System-level RM discount when the August Promo is active. Subtracted from cash before the CC
- * price is derived, so it reduces both cash and CC.
- */
+/** System-level RM discount when the August Promo is active. */
 export const getAugustPromoSystemDiscount = (batteries: number): number =>
   batteries >= 1
     ? AUGUST_PROMO_SYSTEM_DISCOUNT
     : AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT;
 
-/**
- * Per-battery RM discount when the August Promo is active. CASH ONLY — subtracted after the CC
- * price has been derived, so the CC price never reflects it.
- */
+/** Per-battery RM discount when the August Promo is active. */
 export const getAugustPromoBatteryDiscount = (batteries: number): number =>
   batteries * AUGUST_PROMO_BATTERY_UNIT_DISCOUNT;
 
-/** Total August Promo discount off the CASH price (system + per-battery). */
+/**
+ * Total August Promo discount. Like every other discount it comes off cash, and the CC price is
+ * then derived from the reduced cash — so CC always stays at cash / 0.925.
+ */
 export const getAugustPromoDiscount = (batteries: number): number =>
   getAugustPromoSystemDiscount(batteries) + getAugustPromoBatteryDiscount(batteries);
 
@@ -430,14 +427,12 @@ export const calculateSystemCost = (
   // up the cash price; the CC price is derived from it further down.
   let cash = cashPrice + manualBackupBoxRM + batCash + upgradeCost + backupBoxUpgradeRM;
 
-  // August Promo splits in two: the system discount reduces both prices, the per-battery
-  // discount is cash-only. Only the system part is taken off before the CC price is derived.
   let augustPromoSystemDiscount = 0;
   let augustPromoBatteryDiscount = 0;
   if (options?.augustPromo) {
     augustPromoSystemDiscount = getAugustPromoSystemDiscount(batteries);
     augustPromoBatteryDiscount = getAugustPromoBatteryDiscount(batteries);
-    cash -= augustPromoSystemDiscount;
+    cash -= augustPromoSystemDiscount + augustPromoBatteryDiscount;
   }
 
   const suriaRebate = options?.suriaHomeRebate
@@ -445,13 +440,10 @@ export const calculateSystemCost = (
     : 0;
   cash -= suriaRebate;
 
-  // CC (36-month installment) price is ALWAYS derived from the cash price:
-  //   cc = ceil(cash / 0.925) rounded UP to the nearest RM10.
-  // Every discount/upgrade is applied to cash first, then cc is derived from it — EXCEPT the
-  // August Promo per-battery discount, which is deducted below so it never reaches the CC price.
+  // CC (36-month installment) price is ALWAYS ceil(cash / 0.925) rounded UP to the nearest RM10,
+  // with NO exceptions — every add-on and every discount lands on cash first, and cc follows from
+  // the final figure. Nothing may be deducted from cash after this line.
   const cc = Math.ceil(cash / 0.925 / 10) * 10;
-
-  cash -= augustPromoBatteryDiscount;
 
   const augustPromoDiscount = augustPromoSystemDiscount + augustPromoBatteryDiscount;
 
