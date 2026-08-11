@@ -1,0 +1,54 @@
+{
+  "generatedAt": "2026-08-11T07:26:49.925Z",
+  "docs": [
+    {
+      "id": "amcharge-ev-charger-datasheet-pdf",
+      "title": "AmCharge EV Charger Datasheet",
+      "category": "General",
+      "type": "pdf",
+      "file": "AmCharge EV Charger Datasheet.pdf"
+    },
+    {
+      "id": "fonrich-optimizer-datasheet-pdf",
+      "title": "Fonrich Optimizer Datasheet",
+      "category": "General",
+      "type": "pdf",
+      "file": "Fonrich Optimizer Datasheet.pdf"
+    },
+    {
+      "id": "goodwe-3p-inverter-datasheet-pdf",
+      "title": "GoodWe 3P Inverter Datasheet",
+      "category": "General",
+      "type": "pdf",
+      "file": "GoodWe 3P Inverter Datasheet.pdf"
+    },
+    {
+      "id": "goodwe-battery-16kwh-datasheet-pdf",
+      "title": "GoodWe Battery 16kWh Datasheet",
+      "category": "General",
+      "type": "pdf",
+      "file": "GoodWe Battery 16kWh Datasheet.pdf"
+    },
+    {
+      "id": "goodwe-sp-inverter-datasheet-pdf",
+      "title": "GoodWe SP Inverter Datasheet",
+      "category": "General",
+      "type": "pdf",
+      "file": "GoodWe SP Inverter Datasheet.pdf"
+    },
+    {
+      "id": "helukabel-solarflex-x-h1z2z2-k-pdf",
+      "title": "Helukabel SOLARFLEX-X H1Z2Z2-K",
+      "category": "General",
+      "type": "pdf",
+      "file": "Helukabel SOLARFLEX-X H1Z2Z2-K.pdf"
+    },
+    {
+      "id": "trina-650w-neg19rc-20-datasheet-pdf",
+      "title": "Trina 650W NEG19RC.20 Datasheet",
+      "category": "General",
+      "type": "pdf",
+      "file": "Trina 650W NEG19RC.20 Datasheet.pdf"
+    }
+  ]
+}
