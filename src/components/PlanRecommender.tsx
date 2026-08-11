@@ -485,6 +485,10 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
 
 
     plansToInclude.forEach((plan, index) => {
+      // Extra blank line between plans. Prepended rather than appended so the gap before the
+      // "package includes" footer stays as it was.
+      if (index > 0) msg += `\n`;
+
       const r = plan.data;
       const roundedMonthlySavings = Math.floor(r.monthlySavings / 10) * 10;
       const roundedAnnualSavings = roundedMonthlySavings * 12;
