@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-11T08:08:19.683Z",
+  "generatedAt": "2026-08-11T09:21:32.805Z",
   "docs": [
     {
       "id": "amcharge-ev-charger-datasheet-pdf",
@@ -42,6 +42,13 @@
       "category": "General",
       "type": "pdf",
       "file": "Helukabel SOLARFLEX-X H1Z2Z2-K.pdf"
+    },
+    {
+      "id": "power-outage-en-pdf",
+      "title": "Power Outage_EN",
+      "category": "General",
+      "type": "pdf",
+      "file": "Power Outage_EN.pdf"
     },
     {
       "id": "trina-650w-neg19rc-20-datasheet-pdf",

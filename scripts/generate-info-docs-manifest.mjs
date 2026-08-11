@@ -43,7 +43,7 @@ const typeOf = (ext) => (IMAGE_EXT.has(ext) ? 'image' : PDF_EXT.has(ext) ? 'pdf'
 
 fs.mkdirSync(ROOT, { recursive: true });
 
-const docs = [];
+const found = [];
 
 /** dir = absolute path, category = label for entries found directly inside it */
 const scan = (dir, category) => {
@@ -59,17 +59,31 @@ const scan = (dir, category) => {
 
     const ext = path.extname(entry.name).toLowerCase();
     const rel = path.relative(ROOT, full).split(path.sep).join('/');
-    docs.push({
-      id: rel.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase(),
-      title: titleFromFilename(entry.name),
-      category,
-      type: typeOf(ext),
-      file: rel,
-    });
+    found.push({ rel, ext, category, stem: rel.slice(0, rel.length - ext.length) });
   }
 };
 
 scan(ROOT, 'General');
+
+// An image sharing a PDF's name (e.g. "Trina 650W.pdf" + "Trina 650W.jpg") is that PDF's cover
+// thumbnail rather than a document in its own right.
+const coverByStem = new Map();
+for (const f of found) {
+  if (IMAGE_EXT.has(f.ext) && found.some(o => o.stem === f.stem && PDF_EXT.has(o.ext))) {
+    coverByStem.set(f.stem, f.rel);
+  }
+}
+
+const docs = found
+  .filter(f => !(IMAGE_EXT.has(f.ext) && coverByStem.get(f.stem) === f.rel))
+  .map(f => ({
+    id: f.rel.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase(),
+    title: titleFromFilename(f.rel),
+    category: f.category,
+    type: typeOf(f.ext),
+    file: f.rel,
+    ...(coverByStem.has(f.stem) ? { thumb: coverByStem.get(f.stem) } : {}),
+  }));
 
 fs.writeFileSync(MANIFEST, JSON.stringify({ generatedAt: new Date().toISOString(), docs }, null, 2));
 
@@ -78,5 +92,6 @@ if (docs.length === 0) {
 } else {
   const byCategory = docs.reduce((acc, d) => ({ ...acc, [d.category]: (acc[d.category] || 0) + 1 }), {});
   const summary = Object.entries(byCategory).map(([c, n]) => `${c}: ${n}`).join(', ');
-  console.log(`[info-docs] indexed ${docs.length} file(s) — ${summary}`);
+  const covers = docs.filter(d => d.thumb).length;
+  console.log(`[info-docs] indexed ${docs.length} file(s) — ${summary}${covers ? ` (${covers} with cover image)` : ''}`);
 }
