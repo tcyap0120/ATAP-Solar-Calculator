@@ -8,6 +8,32 @@ import { Zap, Sun, DollarSign, Home, Check, Battery, Info, BarChart3, PiggyBank,
 import { RecommendationResult } from '../types';
 import html2canvas from 'html2canvas';
 
+/** Promo deadline shown in the WhatsApp message. Stored as YYYY-MM-DD, persisted per browser. */
+const PROMO_DEADLINE_KEY = 'solar_promoDeadline';
+const DEFAULT_PROMO_DEADLINE = '2026-08-31';
+
+const MONTHS_EN = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+const ordinal = (d: number): string => {
+  if (d % 100 >= 11 && d % 100 <= 13) return `${d}th`;
+  switch (d % 10) {
+    case 1: return `${d}st`;
+    case 2: return `${d}nd`;
+    case 3: return `${d}rd`;
+    default: return `${d}th`;
+  }
+};
+
+/** "2026-08-31" -> "31st August 2026" / "2026年8月31日". Falls back to the raw value if unparsable. */
+const formatPromoDeadline = (iso: string, lang: 'zh' | 'en'): string => {
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d || m < 1 || m > 12) return iso;
+  return lang === 'zh' ? `${y}年${m}月${d}日` : `${ordinal(d)} ${MONTHS_EN[m - 1]} ${y}`;
+};
+
 interface PlanRecommenderProps {
   initialUsage: number;
   augustPromo: boolean;
@@ -105,6 +131,14 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
   const [isSyncing, setIsSyncing] = useState(false);
   const [gapWarning, setGapWarning] = useState<boolean>(false);
   const [language, setLanguage] = useState<'zh' | 'en'>('en');
+
+  // Promo deadline for the WhatsApp message — editable, and remembered across sessions.
+  const [promoDeadline, setPromoDeadline] = useState<string>(
+    () => localStorage.getItem(PROMO_DEADLINE_KEY) || DEFAULT_PROMO_DEADLINE
+  );
+  useEffect(() => {
+    localStorage.setItem(PROMO_DEADLINE_KEY, promoDeadline);
+  }, [promoDeadline]);
 
   // State to track edited plans { id: RecommendationResult }
   const [editedPlans, setEditedPlans] = useState<Record<string, RecommendationResult>>({});
@@ -442,10 +476,11 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
     }
 
     if (augustPromo) {
+      const deadline = formatPromoDeadline(promoDeadline, lang);
       msg +=
         lang === 'zh'
-          ? `⏰ 限时优惠仅限至 2026年7月15日！\n\n`
-          : `⏰ Limited promo until 15th July 2026 only!\n\n`;
+          ? `⏰ 限时优惠仅限至 ${deadline}！\n\n`
+          : `⏰ Limited promo until ${deadline} only!\n\n`;
     }
 
 
@@ -532,7 +567,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
     }
 
     return msg;
-  }, [recommendations, manualResult, currentModeSelectedPlans, getActivePlanData, billAmount, usageKwh, daytimePercent, phase, roofMaxPanels, selectionRule, augustPromo, suriaHomeRebate]);
+  }, [recommendations, manualResult, currentModeSelectedPlans, getActivePlanData, billAmount, usageKwh, daytimePercent, phase, roofMaxPanels, selectionRule, augustPromo, suriaHomeRebate, promoDeadline]);
 
   // Keep WhatsApp message in sync: if settings change while the modal is open, regenerate.
   useEffect(() => {
@@ -788,6 +823,30 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
               </span>
             </span>
           </label>
+
+          {/* Promo deadline shown in the WhatsApp message. Saved for future sessions. */}
+          {augustPromo && (
+            <div className="ml-1 rounded-xl border border-amber-200/80 bg-amber-50/50 px-4 py-3 text-sm text-amber-950">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label htmlFor="promo-deadline" className="font-bold cursor-pointer">
+                  {language === 'zh' ? '优惠截止日期' : 'Promo Deadline'}
+                </label>
+                <input
+                  id="promo-deadline"
+                  type="date"
+                  value={promoDeadline}
+                  onChange={e => setPromoDeadline(e.target.value)}
+                  className="h-9 rounded-lg border border-amber-300 bg-white px-2.5 text-sm font-semibold text-amber-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
+                />
+              </div>
+              <span className="block text-xs text-amber-800/90 mt-1.5">
+                {language === 'zh'
+                  ? `WhatsApp 讯息将显示：⏰ 限时优惠仅限至 ${formatPromoDeadline(promoDeadline, 'zh')}！`
+                  : `WhatsApp message will read: ⏰ Limited promo until ${formatPromoDeadline(promoDeadline, 'en')} only!`}
+              </span>
+            </div>
+          )}
+
           <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-950">
             <input
               type="checkbox"
