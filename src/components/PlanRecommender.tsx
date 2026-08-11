@@ -1687,73 +1687,77 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             <span className="text-slate-500 font-medium">Payback</span>
             <span className="font-bold text-blue-600">{viewResult.paybackYearsCash.toFixed(1)} - {viewResult.paybackYearsCC.toFixed(1)} Years</span>
           </div>
-          <div className="flex justify-between text-[10px] items-center mt-0.5">
-            <span className="text-slate-400">Savings after 10yrs</span>
-            <span className="font-mono font-bold text-slate-500">RM {(result.monthlySavings + (result.exportCreditValue || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-          </div>
-          <div className="flex justify-between text-[10px] items-center mt-0.5">
-            <span className="text-slate-400">10 Year Total Net Profit</span>
-            <span className="font-mono font-bold text-slate-500">RM {((result.monthlySavings * 120) - viewResult.systemCostCash).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-          </div>
-
-          <div className="my-4 border-t border-slate-100"></div>
-
-          {addOns.map((a) => {
-            const qty = typeof a.panels === 'number' ? a.panels : 0;
-            const cost = addOnItemCost(a.type, qty, phase);
-            if (cost <= 0) return null;
-            return (
-              <div key={a.id} className="flex justify-between text-xs items-center text-slate-500">
-                <span>+ {ADD_ON_LABEL[a.type]}{isPerPanelAddOn(a.type) ? ` (${qty} panels)` : ''}</span>
-                <span className="font-mono font-semibold">+RM {cost.toLocaleString()}</span>
-              </div>
-            );
-          })}
-
-          <div className="flex justify-between text-sm items-center">
-            <span className="text-slate-500">Credit Card Price</span>
-            <span className="font-mono font-bold text-slate-800 text-lg">RM {viewResult.systemCostCC.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between text-sm items-center">
-            <span className="text-slate-500">Installment (36m)</span>
-            <span className="font-mono text-slate-500 text-xs">RM {(viewResult.systemCostCC / 36).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</span>
-          </div>
-          <div className="flex justify-between text-sm mt-1 items-center">
-            <span className="text-slate-500 font-bold">Cash Price</span>
-            <span className="font-mono font-bold text-emerald-600 text-lg">RM {viewResult.systemCostCash.toLocaleString()}</span>
-          </div>
-
-          {/* 60-month CC plan — hidden by default, revealed on click. */}
-          {show60mCC ? (
-            <div className="mt-2 pt-2 border-t border-dashed border-slate-200">
-              <button
-                onClick={() => setShow60mCC(false)}
-                className="w-full flex justify-between text-sm items-center group"
-                title="Hide 60m CC price"
-              >
-                <span className="text-slate-500 flex items-center gap-1">
-                  60m CC Price
-                  <ChevronUp size={12} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
-                </span>
-                <span className="font-mono font-bold text-slate-800 text-lg">
-                  RM {deriveCc60FromCash(viewResult.systemCostCash).toLocaleString()}
-                </span>
-              </button>
-              <div className="flex justify-between text-sm items-center">
-                <span className="text-slate-500">Installment (60m)</span>
-                <span className="font-mono text-slate-500 text-xs">
-                  RM {(deriveCc60FromCash(viewResult.systemCostCash) / 60).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo
-                </span>
-              </div>
+          {/* Long-run figures, paired so they read as one footnote rather than two stray rows. */}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="rounded-lg bg-slate-50 px-2.5 py-1.5">
+              <div className="text-[10px] text-slate-400 leading-tight">Savings after 10yrs</div>
+              <div className="font-mono text-xs font-bold text-slate-600 mt-0.5">RM {(result.monthlySavings + (result.exportCreditValue || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
             </div>
-          ) : (
-            <button
-              onClick={() => setShow60mCC(true)}
-              className="mt-2 w-full inline-flex items-center justify-center gap-1 rounded-lg border border-dashed border-slate-200 py-1.5 text-[11px] font-semibold text-slate-400 hover:border-slate-300 hover:text-slate-600 transition-colors"
-            >
-              Show 60m CC Price <ChevronDown size={12} />
-            </button>
-          )}
+            <div className="rounded-lg bg-slate-50 px-2.5 py-1.5">
+              <div className="text-[10px] text-slate-400 leading-tight">10yr Total Net Profit</div>
+              <div className="font-mono text-xs font-bold text-slate-600 mt-0.5">RM {((result.monthlySavings * 120) - viewResult.systemCostCash).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+            </div>
+          </div>
+
+          {/* --- Quote panel: everything the customer actually pays --- */}
+          <div className="mt-4 rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50 to-white p-3.5 space-y-2.5">
+            {addOns.length > 0 && addOns.some(a => addOnItemCost(a.type, typeof a.panels === 'number' ? a.panels : 0, phase) > 0) && (
+              <div className="space-y-1 pb-2.5 border-b border-dashed border-slate-200">
+                {addOns.map((a) => {
+                  const qty = typeof a.panels === 'number' ? a.panels : 0;
+                  const cost = addOnItemCost(a.type, qty, phase);
+                  if (cost <= 0) return null;
+                  return (
+                    <div key={a.id} className="flex justify-between text-[11px] items-center text-slate-500">
+                      <span>+ {ADD_ON_LABEL[a.type]}{isPerPanelAddOn(a.type) ? ` (${qty} panels)` : ''}</span>
+                      <span className="font-mono font-semibold text-blue-700">+RM {cost.toLocaleString()}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Cash is the headline price. */}
+            <div className="flex justify-between items-baseline">
+              <span className="text-sm font-bold text-slate-600">Cash Price</span>
+              <span className="font-mono font-bold text-emerald-600 text-xl tracking-tight">RM {viewResult.systemCostCash.toLocaleString()}</span>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200/70 space-y-2">
+              <div className="flex justify-between items-baseline">
+                <span className="text-xs text-slate-500">
+                  Credit Card Price
+                  <span className="ml-1.5 text-[10px] text-slate-400">36m · RM {(viewResult.systemCostCC / 36).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</span>
+                </span>
+                <span className="font-mono font-bold text-slate-800 text-base">RM {viewResult.systemCostCC.toLocaleString()}</span>
+              </div>
+
+              {/* 60-month plan — hidden by default, revealed on click. */}
+              {show60mCC ? (
+                <button
+                  onClick={() => setShow60mCC(false)}
+                  className="w-full flex justify-between items-baseline group"
+                  title="Hide 60m CC price"
+                >
+                  <span className="text-xs text-slate-500 flex items-baseline gap-1">
+                    60m CC Price
+                    <span className="text-[10px] text-slate-400">60m · RM {(deriveCc60FromCash(viewResult.systemCostCash) / 60).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</span>
+                    <ChevronUp size={11} className="self-center text-slate-300 group-hover:text-slate-500 transition-colors" />
+                  </span>
+                  <span className="font-mono font-bold text-slate-800 text-base">
+                    RM {deriveCc60FromCash(viewResult.systemCostCash).toLocaleString()}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShow60mCC(true)}
+                  className="w-full inline-flex items-center justify-center gap-1 rounded-lg py-1 text-[10px] font-semibold text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                >
+                  Show 60m CC Price <ChevronDown size={11} />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
