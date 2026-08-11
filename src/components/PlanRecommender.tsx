@@ -526,8 +526,8 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       if (lang === 'zh') {
         msg += `📌每月预计节省电费：约 RM${roundedMonthlySavings}+-\n`;
         msg += `📌每年预计节省电费：约 RM${roundedAnnualSavings}+-\n`;
-        msg += `📌早鸟优惠价：RM${ccBeforeRebate.toLocaleString()}（可零利息分期付款36个月）\n`;
-        msg += `📌早鸟现金优惠价：RM${cashBeforeRebate.toLocaleString()}\n`;
+        msg += `📌限时优惠价：RM${ccBeforeRebate.toLocaleString()}（可零利息分期付款36个月）\n`;
+        msg += `📌现金优惠价：RM${cashBeforeRebate.toLocaleString()}\n`;
         if (suriaHomeRebate) {
           msg += `\n🎉RM${suriaRebateAmt.toLocaleString()}津贴后价格: *RM${r.systemCostCC.toLocaleString()}*\n`;
           msg += `💰RM${suriaRebateAmt.toLocaleString()}津贴后现金价: *RM${r.systemCostCash.toLocaleString()}*\n`;
@@ -545,6 +545,14 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
         msg += `📌Est. ROI Period: ${r.paybackYearsCash.toFixed(1)} - ${r.paybackYearsCC.toFixed(1)} Years\n\n`;
       }
     });
+
+    // Without the SuRIA rebate applied, spell out that the quoted prices exclude it.
+    if (!suriaHomeRebate) {
+      msg +=
+        lang === 'zh'
+          ? `_以上价格未包括政府RM3000津贴_\n\n`
+          : `_Prices above exclude the RM3,000 government rebate_\n\n`;
+    }
 
     if (lang === 'zh') {
       msg += `💼 *【 配套包括 】*\n`;
