@@ -100,7 +100,7 @@ export const SYSTEM_PRICING: PricingTier[] = [
   { panels: 11, kwp: 7.15, inverterSize: "5 kWac Single Phase", cashPrice: 19920, ccPrice: 21540, threePhaseCashPrice: 23590, threePhaseCcPrice: 25510, threePhaseInverterSize: "5 kWac Three Phase" },
   { panels: 12, kwp: 7.80, inverterSize: "5 kWac Single Phase", cashPrice: 20750, ccPrice: 22440, threePhaseCashPrice: 24360, threePhaseCcPrice: 26340, threePhaseInverterSize: "5 kWac Three Phase" },
   { panels: 13, kwp: 8.45, inverterSize: "5 kWac Single Phase", cashPrice: 21510, ccPrice: 23260, threePhaseCashPrice: 25120, threePhaseCcPrice: 27160, threePhaseInverterSize: "5 kWac Three Phase" },
-  { panels: 14, kwp: 9.10, inverterSize: "6 kWac Single Phase", cashPrice: 22340, ccPrice: 24160, threePhaseCashPrice: 26280, threePhaseCcPrice: 28420, threePhaseInverterSize: "8 kWac Three Phase" },
+  { panels: 14, kwp: 9.10, inverterSize: "5 kWac Single Phase", cashPrice: 22190, ccPrice: 23990, threePhaseCashPrice: 26280, threePhaseCcPrice: 28420, threePhaseInverterSize: "8 kWac Three Phase" },
   { panels: 15, kwp: 9.75, inverterSize: "8 kWac Single Phase", cashPrice: 24360, ccPrice: 26340, threePhaseCashPrice: 27050, threePhaseCcPrice: 29250, threePhaseInverterSize: "8 kWac Three Phase" },
   { panels: 16, kwp: 10.40, inverterSize: "8 kWac Single Phase", cashPrice: 25260, ccPrice: 27310, threePhaseCashPrice: 28010, threePhaseCcPrice: 30290, threePhaseInverterSize: "8 kWac Three Phase" },
   { panels: 17, kwp: 11.05, inverterSize: "8 kWac Single Phase", cashPrice: 25950, ccPrice: 28060, threePhaseCashPrice: 28780, threePhaseCcPrice: 31120, threePhaseInverterSize: "8 kWac Three Phase" },
