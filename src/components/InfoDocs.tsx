@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import {
   FileText, Image as ImageIcon, X, FolderOpen, File as FileIcon, RefreshCw,
   Zap, BatteryCharging, Sun, Cable, PlugZap, Cpu, ShieldCheck, PowerOff,
+  Share2, Check, Loader2, CheckSquare, Square,
 } from 'lucide-react';
 
 /**
- * Info Docs — reference material agents can pull up during a visit.
+ * Info Docs — reference material agents can pull up and send during a visit.
  *
  * TO ADD A DOCUMENT: drop the file into `public/info-docs/` and redeploy. Nothing else.
  * `scripts/generate-info-docs-manifest.mjs` indexes the folder on every dev/build and writes
@@ -30,9 +31,20 @@ type InfoDoc = {
 const docUrl = (file: string) =>
   `${(import.meta as any).env.BASE_URL}info-docs/${file.split('/').map(encodeURIComponent).join('/')}`;
 
+/** Absolute URL — what a recipient needs when we fall back to sharing a link. */
+const absoluteDocUrl = (file: string) => new URL(docUrl(file), window.location.href).toString();
+
+const baseName = (file: string) => file.split('/').pop() || file;
+
+const MIME: Record<string, string> = {
+  pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+  gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', svg: 'image/svg+xml',
+};
+const mimeFor = (file: string) => MIME[(file.split('.').pop() || '').toLowerCase()] || 'application/octet-stream';
+
 /**
  * Pick an icon and colour from the document name so the grid is scannable at a glance rather
- * than seven identical grey pages. First match wins, so order matters.
+ * than a wall of identical grey pages. First match wins, so order matters.
  */
 const ICON_RULES: { match: RegExp; Icon: typeof Zap; tint: string }[] = [
   { match: /\b(ev|charger|charging)\b/i, Icon: PlugZap, tint: 'text-violet-500 bg-violet-50' },
@@ -58,6 +70,12 @@ export const InfoDocs: React.FC = () => {
   const [docs, setDocs] = useState<InfoDoc[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [lightbox, setLightbox] = useState<InfoDoc | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [sharingId, setSharingId] = useState<string | null>(null);
+
+  // Multi-select mode for sending several documents in one go.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const load = () => {
     setFailed(false);
@@ -70,6 +88,12 @@ export const InfoDocs: React.FC = () => {
 
   useEffect(load, []);
 
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2600);
+    return () => clearTimeout(t);
+  }, [toast]);
+
   // Close the lightbox on Escape.
   useEffect(() => {
     if (!lightbox) return;
@@ -78,13 +102,77 @@ export const InfoDocs: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [lightbox]);
 
+  /**
+   * Share one or more documents. Best case (phones) hands the actual files to the OS share
+   * sheet, so they land in WhatsApp/email as real attachments. Where that is unsupported we
+   * degrade to sharing links, then to copying links to the clipboard.
+   */
+  const share = async (items: InfoDoc[], busyId: string) => {
+    if (items.length === 0) return;
+    const nav = navigator as any;
+    const links = items.map(d => absoluteDocUrl(d.file));
+    const title = items.length === 1 ? items[0].title : `${items.length} documents`;
+
+    setSharingId(busyId);
+    try {
+      // 1. Real file attachments.
+      if (nav.canShare && nav.share) {
+        try {
+          const files = await Promise.all(items.map(async d => {
+            const res = await fetch(docUrl(d.file));
+            if (!res.ok) throw new Error(String(res.status));
+            const blob = await res.blob();
+            return new File([blob], baseName(d.file), { type: blob.type || mimeFor(d.file) });
+          }));
+          if (nav.canShare({ files })) {
+            await nav.share({ files, title });
+            return;
+          }
+        } catch (err: any) {
+          // User dismissed the share sheet — that is a completed interaction, not a failure.
+          if (err?.name === 'AbortError') return;
+          // Anything else (fetch failure, unsupported payload): fall through to link sharing.
+        }
+      }
+
+      // 2. Share a link instead.
+      if (nav.share) {
+        try {
+          await nav.share({ title, text: title, url: links[0] });
+          return;
+        } catch (err: any) {
+          if (err?.name === 'AbortError') return;
+        }
+      }
+
+      // 3. Desktop: copy the link(s).
+      await navigator.clipboard.writeText(links.join('\n'));
+      setToast(items.length === 1 ? 'Link copied to clipboard' : `${items.length} links copied to clipboard`);
+    } catch {
+      setToast('Could not share this file');
+    } finally {
+      setSharingId(null);
+    }
+  };
+
+  const toggleSelected = (id: string) =>
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const exitSelectMode = () => { setSelectMode(false); setSelected(new Set()); };
+
   const categories = Array.from(new Set((docs ?? []).map(d => d.category)));
+  const selectedDocs = (docs ?? []).filter(d => selected.has(d.id));
 
   const renderCard = (doc: InfoDoc) => {
     const { Icon, tint } = visualFor(doc);
     const cover = doc.thumb ?? (doc.type === 'image' ? doc.file : null);
+    const isSelected = selected.has(doc.id);
+    const isSharing = sharingId === doc.id;
 
-    // Images open in the lightbox; everything else opens in a new tab.
     const inner = (
       <>
         <div className={`h-20 flex items-center justify-center overflow-hidden ${cover ? 'bg-slate-100' : tint}`}>
@@ -109,28 +197,49 @@ export const InfoDocs: React.FC = () => {
     );
 
     const cls =
-      'group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col text-left hover:shadow-md hover:border-blue-300 transition-all';
+      `group w-full bg-white rounded-xl border shadow-sm overflow-hidden flex flex-col text-left transition-all ${
+        isSelected ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-200 hover:shadow-md hover:border-blue-300'
+      }`;
 
-    return doc.type === 'image' ? (
-      <button key={doc.id} onClick={() => setLightbox(doc)} className={cls} title={doc.title}>
-        {inner}
-      </button>
-    ) : (
-      <a
-        key={doc.id}
-        href={docUrl(doc.file)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={cls}
-        title={`Open ${doc.title}`}
-      >
-        {inner}
-      </a>
+    return (
+      <div key={doc.id} className="relative">
+        {selectMode ? (
+          <button onClick={() => toggleSelected(doc.id)} className={cls} title={doc.title}>
+            {inner}
+          </button>
+        ) : doc.type === 'image' ? (
+          <button onClick={() => setLightbox(doc)} className={cls} title={doc.title}>
+            {inner}
+          </button>
+        ) : (
+          <a href={docUrl(doc.file)} target="_blank" rel="noopener noreferrer" className={cls} title={`Open ${doc.title}`}>
+            {inner}
+          </a>
+        )}
+
+        {selectMode ? (
+          <div className={`absolute top-1.5 right-1.5 w-6 h-6 rounded-md flex items-center justify-center shadow-sm ${isSelected ? 'bg-blue-600 text-white' : 'bg-white/90 text-slate-400 border border-slate-200'}`}>
+            {isSelected ? <Check size={14} strokeWidth={3} /> : <Square size={12} />}
+          </div>
+        ) : (
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); share([doc], doc.id); }}
+            disabled={isSharing}
+            className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-white/90 backdrop-blur-sm border border-slate-200 shadow-sm flex items-center justify-center text-slate-500 hover:bg-blue-600 hover:border-blue-600 hover:text-white active:scale-95 transition-all disabled:opacity-60"
+            title={`Share ${doc.title}`}
+            aria-label={`Share ${doc.title}`}
+          >
+            {isSharing ? <Loader2 size={13} className="animate-spin" /> : <Share2 size={13} />}
+          </button>
+        )}
+      </div>
     );
   };
 
+  const hasDocs = (docs?.length ?? 0) > 0;
+
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto pb-24">
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -138,16 +247,31 @@ export const InfoDocs: React.FC = () => {
             Info Docs
           </h2>
           <p className="text-sm text-slate-500 mt-1">
-            Reference images and PDFs to show customers during a visit.
+            Reference images and PDFs — tap to open, or share straight to WhatsApp, email and more.
           </p>
         </div>
-        <button
-          onClick={load}
-          className="shrink-0 mt-1 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 hover:border-blue-300 hover:text-blue-600 transition-colors"
-          title="Reload the document list"
-        >
-          <RefreshCw size={13} /> Refresh
-        </button>
+        <div className="shrink-0 mt-1 flex items-center gap-2">
+          {hasDocs && (
+            <button
+              onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
+                selectMode
+                  ? 'border-blue-300 bg-blue-50 text-blue-700'
+                  : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:text-blue-600'
+              }`}
+              title="Select several documents to share at once"
+            >
+              <CheckSquare size={13} /> {selectMode ? 'Cancel' : 'Select'}
+            </button>
+          )}
+          <button
+            onClick={load}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 hover:border-blue-300 hover:text-blue-600 transition-colors"
+            title="Reload the document list"
+          >
+            <RefreshCw size={13} /> Refresh
+          </button>
+        </div>
       </div>
 
       {docs === null ? (
@@ -185,6 +309,40 @@ export const InfoDocs: React.FC = () => {
         </div>
       )}
 
+      {/* Sticky action bar while selecting. */}
+      {selectMode && (
+        <div className="fixed bottom-0 inset-x-0 md:left-64 z-40 border-t border-slate-200 bg-white/95 backdrop-blur px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] animate-in slide-in-from-bottom-2 duration-200">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+            <span className="text-sm font-semibold text-slate-600">
+              {selected.size === 0 ? 'Select documents to share' : `${selected.size} selected`}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelected(new Set((docs ?? []).map(d => d.id)))}
+                className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 hover:border-blue-300 hover:text-blue-600 transition-colors"
+              >
+                Select all
+              </button>
+              <button
+                onClick={() => share(selectedDocs, '__bulk__')}
+                disabled={selected.size === 0 || sharingId === '__bulk__'}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-40 disabled:active:scale-100"
+              >
+                {sharingId === '__bulk__'
+                  ? <><Loader2 size={13} className="animate-spin" /> Preparing…</>
+                  : <><Share2 size={13} /> Share{selected.size > 0 ? ` (${selected.size})` : ''}</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-200">
+          {toast}
+        </div>
+      )}
+
       {lightbox && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 animate-in fade-in duration-200"
@@ -196,6 +354,13 @@ export const InfoDocs: React.FC = () => {
             title="Close"
           >
             <X size={20} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); share([lightbox], lightbox.id); }}
+            className="absolute top-4 right-16 h-10 px-4 rounded-full bg-white/10 hover:bg-white/20 flex items-center gap-2 text-sm font-semibold text-white transition-colors"
+            title="Share this image"
+          >
+            {sharingId === lightbox.id ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />} Share
           </button>
           <img
             src={docUrl(lightbox.file)}
