@@ -4,7 +4,7 @@ import { simulateSolar, getKwhFromBill, calculateSystemCost, calculateBill, getA
 import { InputNumber } from './InputNumber';
 import { InputSlider } from './InputSlider';
 import { SYSTEM_PRICING, BATTERY_CAPACITY_KWH, BATTERY_NOMINAL_KWH, PEAK_SUN_HOURS, PANEL_WATTAGE, AUTO_BACKUP_BOX_UPGRADE_SINGLE_PHASE_RM, AUTO_BACKUP_BOX_UPGRADE_THREE_PHASE_RM } from '../constants';
-import { Zap, Sun, DollarSign, Home, Check, Battery, Info, BarChart3, PiggyBank, Target, PenTool, ShieldCheck, Compass, ChevronDown, ChevronUp, TrendingUp, AlertTriangle, RefreshCw, MessageCircle, Copy, X, Plus, Minus, Table2, Download, Globe, User, Phone, ArrowUpCircle, CheckCircle2 } from 'lucide-react';
+import { Zap, Sun, DollarSign, Home, Check, Battery, Info, BarChart3, PiggyBank, Target, PenTool, ShieldCheck, Compass, ChevronDown, ChevronUp, TrendingUp, AlertTriangle, RefreshCw, MessageCircle, Copy, X, Plus, Minus, Table2, Download, Globe, User, Phone, ArrowUpCircle, CheckCircle2, Share2, Loader2 } from 'lucide-react';
 import { RecommendationResult } from '../types';
 import html2canvas from 'html2canvas';
 
@@ -1926,9 +1926,23 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
   const [showTenYearGrossSavings, setShowTenYearGrossSavings] = useState(false);
   const [showNewImport, setShowNewImport] = useState(false);
   const [showNewExport, setShowNewExport] = useState(false);
+  const [busy, setBusy] = useState<null | 'download' | 'share'>(null);
+  const [toast, setToast] = useState<{ text: string; whatsapp?: boolean } | null>(null);
 
-  const handleDownload = async () => {
-    if (!tableRef.current) return;
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const imageFileName = `Solar-Comparison-${new Date().toISOString().slice(0, 10)}.jpg`;
+
+  /**
+   * Render the comparison table to a canvas at desktop width, regardless of the device
+   * actually looking at it. Returns null if the table isn't mounted.
+   */
+  const captureCanvas = async (): Promise<HTMLCanvasElement | null> => {
+    if (!tableRef.current) return null;
 
     const original = tableRef.current;
     const numPlans = data.length;
@@ -1968,7 +1982,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
     const captureH = clone.scrollHeight;
 
     try {
-      const canvas = await html2canvas(clone, {
+      return await html2canvas(clone, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
@@ -1984,16 +1998,101 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
         windowHeight: captureH + 200,
         imageTimeout: 15000,
       });
+    } finally {
+      document.body.removeChild(clone);
+    }
+  };
 
-      const link = document.createElement('a');
-      link.download = `Solar-Comparison-${new Date().toISOString().slice(0, 10)}.jpg`;
-      link.href = canvas.toDataURL('image/jpeg', 0.95);
-      link.click();
+  const canvasToBlob = (canvas: HTMLCanvasElement, type: string, quality?: number) =>
+    new Promise<Blob | null>(resolve => canvas.toBlob(b => resolve(b), type, quality));
+
+  const saveCanvas = (canvas: HTMLCanvasElement) => {
+    const link = document.createElement('a');
+    link.download = imageFileName;
+    link.href = canvas.toDataURL('image/jpeg', 0.95);
+    link.click();
+  };
+
+  const handleDownload = async () => {
+    if (busy) return;
+    setBusy('download');
+    try {
+      const canvas = await captureCanvas();
+      if (canvas) saveCanvas(canvas);
     } catch (err) {
       console.error('Failed to download image', err);
       alert('Failed to download image. Please try again.');
     } finally {
-      document.body.removeChild(clone);
+      setBusy(null);
+    }
+  };
+
+  /**
+   * Send the comparison image straight to WhatsApp (or whatever the OS offers).
+   *
+   * Degrades in three steps so it does something useful everywhere:
+   *   1. Phones: hands a real File to the OS share sheet, so the image lands in a WhatsApp
+   *      chat as a photo without ever touching the gallery.
+   *   2. Desktop: copies the image to the clipboard — one Ctrl+V into WhatsApp Web sends it.
+   *   3. Anything else: saves the file and points the agent at WhatsApp Web to attach it.
+   */
+  const handleShare = async () => {
+    if (busy) return;
+    setBusy('share');
+    try {
+      const canvas = await captureCanvas();
+      if (!canvas) return;
+
+      const nav = navigator as any;
+      const title = language === 'zh' ? '太阳能方案比较' : 'Solar Plan Comparison';
+      const text = `${title} — RM${currentBill}/${language === 'zh' ? '月' : 'mo'} (${usageKwh} kWh)`;
+
+      // 1. Native share sheet with the image as a real attachment.
+      const jpeg = await canvasToBlob(canvas, 'image/jpeg', 0.95);
+      if (jpeg && nav.share && nav.canShare) {
+        const file = new File([jpeg], imageFileName, { type: 'image/jpeg' });
+        if (nav.canShare({ files: [file] })) {
+          try {
+            await nav.share({ files: [file], title, text });
+            return;
+          } catch (err: any) {
+            // Dismissing the share sheet is a completed interaction, not a failure.
+            if (err?.name === 'AbortError') return;
+            // Anything else: fall through to the clipboard.
+          }
+        }
+      }
+
+      // 2. Clipboard — WhatsApp Web accepts a pasted image.
+      try {
+        const png = await canvasToBlob(canvas, 'image/png');
+        if (png && nav.clipboard?.write && typeof ClipboardItem !== 'undefined') {
+          await nav.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+          setToast({
+            text: language === 'zh'
+              ? '图片已复制。在 WhatsApp 聊天中按 Ctrl+V 粘贴发送。'
+              : 'Image copied. Paste it into a WhatsApp chat with Ctrl+V.',
+            whatsapp: true,
+          });
+          return;
+        }
+      } catch {
+        // Clipboard blocked (permissions, insecure context) — fall through to saving.
+      }
+
+      // 3. Save the file so it can be attached manually.
+      saveCanvas(canvas);
+      setToast({
+        text: language === 'zh'
+          ? '图片已保存。在 WhatsApp 中作为附件发送。'
+          : 'Image saved. Attach it in WhatsApp to send.',
+        whatsapp: true,
+      });
+    } catch (err) {
+      console.error('Failed to share image', err);
+      alert('Failed to prepare the image. Please try again.');
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -2010,7 +2109,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-6xl max-h-[min(95dvh,100vh)] sm:max-h-[90vh] rounded-xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden min-h-0">
+      <div className="relative bg-white w-full max-w-6xl max-h-[min(95dvh,100vh)] sm:max-h-[90vh] rounded-xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden min-h-0">
         {/* Header */}
         <div className="p-3 sm:p-4 border-b border-slate-100 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center bg-slate-50/50 shrink-0">
           <div className="min-w-0 pr-8 sm:pr-0">
@@ -2029,8 +2128,20 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
               <Globe size={16} />
               {language === 'zh' ? 'EN' : '中文'}
             </button>
-            <button onClick={handleDownload} className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-bold hover:bg-blue-700 transition-colors">
-              <Download size={16} />
+            <button
+              onClick={handleShare}
+              disabled={!!busy}
+              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs sm:text-sm font-bold hover:bg-green-700 disabled:opacity-60 transition-colors"
+            >
+              {busy === 'share' ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
+              {language === 'zh' ? '分享' : 'Share'}
+            </button>
+            <button
+              onClick={handleDownload}
+              disabled={!!busy}
+              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition-colors"
+            >
+              {busy === 'download' ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
               {language === 'zh' ? '下载' : 'Download'}
             </button>
             <button
@@ -2384,14 +2495,43 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
         </div>
 
         {/* Footer actions */}
-        <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
+        <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 shrink-0">
           <button
             onClick={onClose}
-            className="w-full sm:w-auto px-6 py-2.5 sm:py-2 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-900 transition-colors"
+            className="w-full sm:w-auto px-6 py-2.5 sm:py-2 bg-slate-200 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-300 transition-colors"
           >
             {language === 'zh' ? '关闭' : 'Close'}
           </button>
+          <button
+            onClick={handleShare}
+            disabled={!!busy}
+            className="w-full sm:w-auto px-6 py-2.5 sm:py-2 bg-green-600 text-white text-sm font-bold rounded-xl hover:bg-green-700 disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
+          >
+            {busy === 'share' ? <Loader2 size={18} className="animate-spin" /> : <Share2 size={18} />}
+            {busy === 'share'
+              ? (language === 'zh' ? '生成图片中…' : 'Preparing image…')
+              : (language === 'zh' ? '分享到 WhatsApp' : 'Share to WhatsApp')}
+          </button>
         </div>
+
+        {/* Share result toast */}
+        {toast && (
+          <div className="absolute bottom-24 sm:bottom-20 left-1/2 -translate-x-1/2 z-10 w-[min(28rem,calc(100%-2rem))] bg-slate-900 text-white text-xs sm:text-sm rounded-xl shadow-2xl px-4 py-3 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
+            <CheckCircle2 size={18} className="text-green-400 shrink-0" />
+            <span className="flex-1 leading-snug">{toast.text}</span>
+            {toast.whatsapp && (
+              <button
+                onClick={() => window.open('https://web.whatsapp.com', '_blank', 'noopener')}
+                className="shrink-0 px-2.5 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition-colors"
+              >
+                {language === 'zh' ? '打开' : 'Open'}
+              </button>
+            )}
+            <button onClick={() => setToast(null)} className="shrink-0 text-slate-400 hover:text-white transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
