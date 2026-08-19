@@ -475,7 +475,7 @@ const App = () => {
                       <span>
                         <span className="font-bold">August Promo</span>
                         <span className="block text-xs text-amber-800/90 mt-0.5">
-                          No battery: −RM1000 on system. With 1+ batteries: −RM2200 on system, plus −RM1200 per battery. Same for single and three phase.
+                          No battery: −RM800 on system. With 1+ batteries: −RM2200 on system, plus −RM1200 per battery. Same for single and three phase.
                         </span>
                       </span>
                     </label>

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { simulateSolar, getKwhFromBill, calculateSystemCost, calculateBill, getAugustPromoDiscount, deriveCcFromCash, deriveCc60FromCash } from '../utils/billingEngine';
 import { InputNumber } from './InputNumber';
 import { InputSlider } from './InputSlider';
-import { SYSTEM_PRICING, BATTERY_CAPACITY_KWH, BATTERY_NOMINAL_KWH, PEAK_SUN_HOURS, PANEL_WATTAGE, AUTO_BACKUP_BOX_UPGRADE_SINGLE_PHASE_RM, AUTO_BACKUP_BOX_UPGRADE_THREE_PHASE_RM } from '../constants';
+import { SYSTEM_PRICING, BATTERY_CAPACITY_KWH, BATTERY_NOMINAL_KWH, PEAK_SUN_HOURS, PANEL_WATTAGE, AUTO_BACKUP_BOX_UPGRADE_SINGLE_PHASE_RM, AUTO_BACKUP_BOX_UPGRADE_THREE_PHASE_RM, THREE_PHASE_NO_BATTERY_MAX_PANELS } from '../constants';
 import { Zap, Sun, DollarSign, Home, Check, Battery, Info, BarChart3, PiggyBank, Target, PenTool, ShieldCheck, Compass, ChevronDown, ChevronUp, TrendingUp, AlertTriangle, RefreshCw, MessageCircle, Copy, X, Plus, Minus, Table2, Download, Globe, User, Phone, ArrowUpCircle, CheckCircle2, Share2, Loader2 } from 'lucide-react';
 import { RecommendationResult } from '../types';
 import html2canvas from 'html2canvas';
@@ -830,8 +830,8 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
               <span className="font-bold">{language === 'zh' ? '八月促销' : 'August Promo'}</span>
               <span className="block text-xs text-amber-800/90 mt-0.5">
                 {language === 'zh'
-                  ? '无电池：系统减 RM1000。有电池：系统减 RM2200；每粒电池另减 RM1200。单相与三相相同。'
-                  : 'No battery: −RM1000 on system. With 1+ batteries: −RM2200 on system, plus −RM1200 per battery. Same for single and three phase.'}
+                  ? '无电池：系统减 RM800。有电池：系统减 RM2200；每粒电池另减 RM1200。单相与三相相同。'
+                  : 'No battery: −RM800 on system. With 1+ batteries: −RM2200 on system, plus −RM1200 per battery. Same for single and three phase.'}
               </span>
             </span>
           </label>
@@ -1508,6 +1508,12 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     ((typeof batteries === 'number' ? batteries : 0) > 0 && (typeof panels === 'number' ? panels : 0) > 14)
   );
 
+  // Three-phase with no battery tops out at 33 panels. Adding a battery clears the warning.
+  const isThreePhaseNoBatteryOverPanels =
+    phase === 'three' &&
+    (typeof batteries === 'number' ? batteries : 0) === 0 &&
+    (typeof panels === 'number' ? panels : 0) > THREE_PHASE_NO_BATTERY_MAX_PANELS;
+
   return (
     <div
       className={`bg-white rounded-2xl shadow-lg border overflow-hidden flex flex-col h-full transition-all group relative ${isSelected ? 'border-green-500 ring-2 ring-green-500 ring-opacity-50' : 'border-slate-100 hover:ring-2 hover:ring-blue-500/20'}`}
@@ -1695,6 +1701,18 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             <div>
               <span className="font-bold block mb-0.5">Single Phase Limit Exceeded</span>
               Single-phase limits exceeded: max 11 panels without battery, or 14 panels with battery.
+            </div>
+          </div>
+        )}
+
+        {/* Three Phase, no battery: over the recommended panel count */}
+        {isThreePhaseNoBatteryOverPanels && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl flex gap-2 items-start text-xs text-amber-700 animate-in fade-in slide-in-from-top-2">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-600" />
+            <div>
+              <span className="font-bold block mb-0.5">Above Recommended Panels</span>
+              Three Phase without battery is recommended up to {THREE_PHASE_NO_BATTERY_MAX_PANELS} panels.
+              Add a battery to support {THREE_PHASE_NO_BATTERY_MAX_PANELS + 1} or more.
             </div>
           </div>
         )}
@@ -1978,9 +1996,6 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
     await new Promise(r => requestAnimationFrame(r));
     await new Promise(r => setTimeout(r, 250));
 
-    const captureW = clone.scrollWidth;
-    const captureH = clone.scrollHeight;
-
     try {
       return await html2canvas(clone, {
         scale: 2,
@@ -1990,12 +2005,18 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
         logging: false,
         scrollX: 0,
         scrollY: 0,
-        width: captureW,
-        height: captureH,
-        // 1400px windowWidth activates all Tailwind sm:/md: breakpoints so
-        // desktop font sizes, paddings, and min-widths render correctly
+        // No explicit width/height. html2canvas re-lays the clone out inside its own iframe at
+        // windowWidth below and measures it there, which is the only measurement that matches
+        // what actually gets painted. Passing this document's scrollWidth/scrollHeight instead
+        // would size the canvas from the *device-width* layout — on a phone that is shorter than
+        // the desktop layout being rendered (bigger logo, sm: paddings and font sizes), so the
+        // bottom of the table was being cut off.
+        //
+        // 1400px windowWidth activates all Tailwind sm:/md: breakpoints so desktop font sizes,
+        // paddings, and min-widths render correctly. windowHeight only sizes that virtual
+        // viewport — it no longer constrains the canvas — so give it room to spare.
         windowWidth: 1400,
-        windowHeight: captureH + 200,
+        windowHeight: Math.max(clone.scrollHeight, 900) + 1000,
         imageTimeout: 15000,
       });
     } finally {

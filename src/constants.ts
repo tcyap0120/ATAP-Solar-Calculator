@@ -70,7 +70,7 @@ export const THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM = 800; // panels 27–32
 /** With 1+ batteries: system discount. */
 export const AUGUST_PROMO_SYSTEM_DISCOUNT = 2200;
 /** With 0 batteries: lower system discount. */
-export const AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT = 1000;
+export const AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT = 800;
 /** Per-battery discount. */
 export const AUGUST_PROMO_BATTERY_UNIT_DISCOUNT = 1200;
 
@@ -87,6 +87,13 @@ export const AUTO_BACKUP_BOX_UPGRADE_THREE_PHASE_RM = 1500;
  * Above this, only three-phase tier pricing exists.
  */
 export const SINGLE_PHASE_MAX_PANELS = 24;
+
+/**
+ * Highest panel count recommended on a three-phase meter with no battery. Above this the array
+ * outgrows what the inverter can take without storage to absorb the peak, so 34+ panels is
+ * flagged on the card rather than blocked — the agent can still quote it deliberately.
+ */
+export const THREE_PHASE_NO_BATTERY_MAX_PANELS = 33;
 
 // System Pricing Database
 export const SYSTEM_PRICING: PricingTier[] = [
