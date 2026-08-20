@@ -22,7 +22,8 @@ import {
   THREE_PHASE_INVERTER_UPGRADE_5_TO_8KW_RM,
   THREE_PHASE_INVERTER_UPGRADE_8_TO_10KW_RM,
   THREE_PHASE_INVERTER_UPGRADE_10_TO_12KW_RM,
-  THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM
+  THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM,
+  THREE_PHASE_INVERTER_UPGRADE_20_TO_25KW_RM
 } from '../constants';
 import { BillBreakdown, SimulationResult, PricingTier } from '../types';
 
@@ -387,6 +388,16 @@ export const calculateSystemCost = (
       if (inverterSize.includes("12 kWac") && systemKwp > limit12kW) {
         inverterSize = "15 kWac Three Phase";
         upgradeCost += 800;
+        isUpgraded = true;
+      }
+
+      // The 20 kWac sheet tiers run 41–60 panels, but from 50 panels the array outgrows the
+      // inverter, so it steps up to 25 kWac. Driven by panel count rather than a kWp limit
+      // because that is how the rule is quoted. Tiers 61+ already ship 25 kWac from the sheet,
+      // so the upper bound never actually bites — it is stated to keep the rule readable.
+      if (inverterSize.includes("20 kWac") && panels >= 50 && panels <= 60) {
+        inverterSize = "25 kWac Three Phase";
+        upgradeCost += THREE_PHASE_INVERTER_UPGRADE_20_TO_25KW_RM;
         isUpgraded = true;
       }
     }

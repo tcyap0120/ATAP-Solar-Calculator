@@ -61,6 +61,7 @@ export const THREE_PHASE_INVERTER_UPGRADE_5_TO_8KW_RM = 500;   // panels 11–14
 export const THREE_PHASE_INVERTER_UPGRADE_8_TO_10KW_RM = 300;  // panels 18–21
 export const THREE_PHASE_INVERTER_UPGRADE_10_TO_12KW_RM = 600; // panels 22–26
 export const THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM = 800; // panels 27–32
+export const THREE_PHASE_INVERTER_UPGRADE_20_TO_25KW_RM = 5000; // panels 50–60
 
 /**
  * August Promo. Every discount here comes off the cash price, and the CC price is then derived
@@ -134,20 +135,43 @@ export const SYSTEM_PRICING: PricingTier[] = [
   { panels: 38, kwp: 24.70, inverterSize: "15 kWac Three Phase", cashPrice: 48700, ccPrice: 52650, threePhaseCashPrice: 44810, threePhaseCcPrice: 48450, threePhaseInverterSize: "15 kWac Three Phase" },
   { panels: 39, kwp: 25.35, inverterSize: "15 kWac Three Phase", cashPrice: 49400, ccPrice: 53410, threePhaseCashPrice: 45530, threePhaseCcPrice: 49230, threePhaseInverterSize: "15 kWac Three Phase" },
   { panels: 40, kwp: 26.00, inverterSize: "15 kWac Three Phase", cashPrice: 50100, ccPrice: 54170, threePhaseCashPrice: 46150, threePhaseCcPrice: 49900, threePhaseInverterSize: "15 kWac Three Phase" },
-  { panels: 41, kwp: 26.65, inverterSize: "20 kWac Three Phase", cashPrice: 49300, ccPrice: 53300 },
-  { panels: 42, kwp: 27.30, inverterSize: "20 kWac Three Phase", cashPrice: 50200, ccPrice: 54280 },
-  { panels: 43, kwp: 27.95, inverterSize: "20 kWac Three Phase", cashPrice: 51100, ccPrice: 55250 },
-  { panels: 44, kwp: 28.60, inverterSize: "20 kWac Three Phase", cashPrice: 52000, ccPrice: 56220 },
-  { panels: 45, kwp: 29.25, inverterSize: "20 kWac Three Phase", cashPrice: 52900, ccPrice: 57190 },
-  { panels: 46, kwp: 29.90, inverterSize: "20 kWac Three Phase", cashPrice: 53800, ccPrice: 58170 },
-  { panels: 47, kwp: 30.55, inverterSize: "20 kWac Three Phase", cashPrice: 54700, ccPrice: 59140 },
-  { panels: 48, kwp: 31.20, inverterSize: "20 kWac Three Phase", cashPrice: 55500, ccPrice: 60000 },
-  { panels: 49, kwp: 31.85, inverterSize: "20 kWac Three Phase", cashPrice: 56300, ccPrice: 60870 },
-  { panels: 50, kwp: 32.50, inverterSize: "20 kWac Three Phase", cashPrice: 57100, ccPrice: 61730 },
-  { panels: 51, kwp: 33.15, inverterSize: "20 kWac Three Phase", cashPrice: 57900, ccPrice: 62600 },
-  { panels: 52, kwp: 33.80, inverterSize: "20 kWac Three Phase", cashPrice: 58700, ccPrice: 63460 },
-  { panels: 53, kwp: 34.45, inverterSize: "20 kWac Three Phase", cashPrice: 59500, ccPrice: 64330 },
-  { panels: 54, kwp: 35.10, inverterSize: "20 kWac Three Phase", cashPrice: 60000, ccPrice: 64870 },
-  { panels: 55, kwp: 35.75, inverterSize: "20 kWac Three Phase", cashPrice: 60200, ccPrice: 65090 },
-  { panels: 56, kwp: 36.40, inverterSize: "20 kWac Three Phase", cashPrice: 60400, ccPrice: 65300 },
+  // Panels 41+ are three-phase only — the single-phase sheet stops at SINGLE_PHASE_MAX_PANELS,
+  // so cashPrice/ccPrice here ARE the three-phase prices and inverterSize is already a
+  // three-phase unit. No threePhase* overrides, which keeps calculateSystemCost on its
+  // cascading-upgrade branch (see THREE_PHASE_INVERTER_UPGRADE_20_TO_25KW_RM).
+  { panels: 41, kwp: 26.65, inverterSize: "20 kWac Three Phase", cashPrice: 50070, ccPrice: 54130 },
+  { panels: 42, kwp: 27.30, inverterSize: "20 kWac Three Phase", cashPrice: 50780, ccPrice: 54900 },
+  { panels: 43, kwp: 27.95, inverterSize: "20 kWac Three Phase", cashPrice: 51480, ccPrice: 55660 },
+  { panels: 44, kwp: 28.60, inverterSize: "20 kWac Three Phase", cashPrice: 52190, ccPrice: 56430 },
+  { panels: 45, kwp: 29.25, inverterSize: "20 kWac Three Phase", cashPrice: 52970, ccPrice: 57270 },
+  { panels: 46, kwp: 29.90, inverterSize: "20 kWac Three Phase", cashPrice: 54210, ccPrice: 58610 },
+  { panels: 47, kwp: 30.55, inverterSize: "20 kWac Three Phase", cashPrice: 54930, ccPrice: 59390 },
+  { panels: 48, kwp: 31.20, inverterSize: "20 kWac Three Phase", cashPrice: 55630, ccPrice: 60150 },
+  { panels: 49, kwp: 31.85, inverterSize: "20 kWac Three Phase", cashPrice: 56350, ccPrice: 60920 },
+  { panels: 50, kwp: 32.50, inverterSize: "20 kWac Three Phase", cashPrice: 57050, ccPrice: 61680 },
+  { panels: 51, kwp: 33.15, inverterSize: "20 kWac Three Phase", cashPrice: 57830, ccPrice: 62520 },
+  { panels: 52, kwp: 33.80, inverterSize: "20 kWac Three Phase", cashPrice: 58540, ccPrice: 63290 },
+  { panels: 53, kwp: 34.45, inverterSize: "20 kWac Three Phase", cashPrice: 59250, ccPrice: 64060 },
+  { panels: 54, kwp: 35.10, inverterSize: "20 kWac Three Phase", cashPrice: 59960, ccPrice: 64830 },
+  { panels: 55, kwp: 35.75, inverterSize: "20 kWac Three Phase", cashPrice: 60660, ccPrice: 65580 },
+  { panels: 56, kwp: 36.40, inverterSize: "20 kWac Three Phase", cashPrice: 61360, ccPrice: 66340 },
+  { panels: 57, kwp: 37.05, inverterSize: "20 kWac Three Phase", cashPrice: 62160, ccPrice: 67200 },
+  { panels: 58, kwp: 37.70, inverterSize: "20 kWac Three Phase", cashPrice: 62860, ccPrice: 67960 },
+  { panels: 59, kwp: 38.35, inverterSize: "20 kWac Three Phase", cashPrice: 63570, ccPrice: 68730 },
+  { panels: 60, kwp: 39.00, inverterSize: "20 kWac Three Phase", cashPrice: 64270, ccPrice: 69490 },
+  { panels: 61, kwp: 39.65, inverterSize: "25 kWac Three Phase", cashPrice: 70350, ccPrice: 76060 },
+  { panels: 62, kwp: 40.30, inverterSize: "25 kWac Three Phase", cashPrice: 75350, ccPrice: 81460 },
+  { panels: 63, kwp: 40.95, inverterSize: "25 kWac Three Phase", cashPrice: 80350, ccPrice: 86870 },
+  { panels: 64, kwp: 41.60, inverterSize: "25 kWac Three Phase", cashPrice: 85350, ccPrice: 92280 },
+  { panels: 65, kwp: 42.25, inverterSize: "25 kWac Three Phase", cashPrice: 90350, ccPrice: 97680 },
+  { panels: 66, kwp: 42.90, inverterSize: "25 kWac Three Phase", cashPrice: 95350, ccPrice: 103090 },
+  { panels: 67, kwp: 43.55, inverterSize: "25 kWac Three Phase", cashPrice: 100350, ccPrice: 108490 },
+  { panels: 68, kwp: 44.20, inverterSize: "25 kWac Three Phase", cashPrice: 105350, ccPrice: 113900 },
+  { panels: 69, kwp: 44.85, inverterSize: "25 kWac Three Phase", cashPrice: 110350, ccPrice: 119300 },
+  { panels: 70, kwp: 45.50, inverterSize: "25 kWac Three Phase", cashPrice: 115350, ccPrice: 124710 },
+  { panels: 71, kwp: 46.15, inverterSize: "25 kWac Three Phase", cashPrice: 120350, ccPrice: 130110 },
+  { panels: 72, kwp: 46.80, inverterSize: "25 kWac Three Phase", cashPrice: 125350, ccPrice: 135520 },
+  { panels: 73, kwp: 47.45, inverterSize: "25 kWac Three Phase", cashPrice: 130350, ccPrice: 140920 },
+  { panels: 74, kwp: 48.10, inverterSize: "25 kWac Three Phase", cashPrice: 135350, ccPrice: 146330 },
+  { panels: 75, kwp: 48.75, inverterSize: "25 kWac Three Phase", cashPrice: 140350, ccPrice: 151730 },
 ];
