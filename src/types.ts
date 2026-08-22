@@ -58,6 +58,8 @@ export interface RecommendationResult {
   batteries: number;
   systemCostCash: number;
   systemCostCC: number;
+  /** 60-month credit-card price. Comes from the engine so the SuRIA rebate lands on it too. */
+  systemCostCC60: number;
   monthlySavings: number;
   savedPercentage: number;
   newBillAmount: number;

@@ -449,20 +449,28 @@ export const calculateSystemCost = (
     cash -= augustPromoSystemDiscount + augustPromoBatteryDiscount;
   }
 
+  // Every add-on and every percentage-based discount has now landed on cash, so the credit-card
+  // prices follow from this figure.
+  let cc = deriveCcFromCash(cash);
+  let cc60 = deriveCc60FromCash(cash);
+
+  // The SuRIA rebate is the exception: it is a flat cash grant, not a discount on the system, so
+  // it comes off AFTER the CC prices are derived and takes the same RM off all three. Deducting
+  // it before derivation instead (as it used to be) inflated it to RM3,243 on the 36-month price
+  // and RM3,333 on the 60-month one, because the divisor grossed it up.
   const suriaRebate = options?.suriaHomeRebate
     ? (phase === 'single' && (panels === 6 || panels === 7) ? 1800 : 3000)
     : 0;
   cash -= suriaRebate;
-
-  // Every add-on and every discount has now landed on cash. Nothing may change cash after this
-  // line — the CC price follows from the final figure.
-  const cc = deriveCcFromCash(cash);
+  cc -= suriaRebate;
+  cc60 -= suriaRebate;
 
   const augustPromoDiscount = augustPromoSystemDiscount + augustPromoBatteryDiscount;
 
   return {
     cash,
     cc,
+    cc60,
     inverterSize,
     tier,
     isUpgraded,

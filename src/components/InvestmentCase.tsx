@@ -4,7 +4,7 @@ import {
   ShieldCheck, TrendingUp, Leaf, Zap, Home,
 } from 'lucide-react';
 import { calculateScenario } from './PlanRecommender';
-import { getKwhFromBill, calculateBill, deriveCc60FromCash } from '../utils/billingEngine';
+import { getKwhFromBill, calculateBill } from '../utils/billingEngine';
 import { PANEL_WATTAGE, BATTERY_NOMINAL_KWH } from '../constants';
 import { captureFixedWidthElement, shareCanvas, downloadCanvas, ShareOutcome } from '../utils/shareImage';
 
@@ -293,7 +293,7 @@ export const InvestmentCase: React.FC = () => {
       ? scenario.systemCostCash
       : plan === 'cc36'
         ? scenario.systemCostCC
-        : deriveCc60FromCash(scenario.systemCostCash);
+        : scenario.systemCostCC60;
 
   const price = priceOverride ?? autoPrice;
   const savings = savingsOverride ?? (scenario?.monthlySavings ?? 0);
@@ -671,22 +671,47 @@ const Tick2: React.FC<{ checked: boolean; onChange: (v: boolean) => void; label:
   </label>
 );
 
+/**
+ * A number field that can be empty while you are typing in it.
+ *
+ * Clearing the box used to report 0 upward, which wrote "0" straight back into the input — so
+ * selecting all, deleting, and typing 30 left you with "030". The half-typed text now lives in a
+ * local draft: an empty box reports nothing and leaves the last committed value alone, and the
+ * draft is dropped on blur (falling back to min, or 0) or as soon as the parent settles on a
+ * different number than what was typed, which is how clamped fields snap back into view.
+ */
 const NumInput: React.FC<{
   value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number;
-}> = ({ value, onChange, min, max, step }) => (
-  <input
-    type="number"
-    value={Number.isFinite(value) ? value : 0}
-    min={min}
-    max={max}
-    step={step}
-    onChange={e => {
-      const v = parseFloat(e.target.value);
-      onChange(Number.isFinite(v) ? v : 0);
-    }}
-    className="w-full px-2 py-2 rounded-lg border border-slate-200 text-sm font-bold text-slate-700 outline-none focus:border-blue-500"
-  />
-);
+}> = ({ value, onChange, min, max, step }) => {
+  const [draft, setDraft] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (draft === null || draft === '') return;
+    const typed = parseFloat(draft);
+    if (Number.isFinite(typed) && typed !== value) setDraft(null);
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <input
+      type="number"
+      value={draft ?? (Number.isFinite(value) ? String(value) : '')}
+      min={min}
+      max={max}
+      step={step}
+      onChange={e => {
+        const raw = e.target.value;
+        setDraft(raw);
+        const v = parseFloat(raw);
+        if (Number.isFinite(v)) onChange(v);
+      }}
+      onBlur={() => {
+        if (draft !== null && draft.trim() === '') onChange(min ?? 0);
+        setDraft(null);
+      }}
+      className="w-full px-2 py-2 rounded-lg border border-slate-200 text-sm font-bold text-slate-700 outline-none focus:border-blue-500"
+    />
+  );
+};
 
 /* ------------------------------------------------------------------ */
 /* The poster                                                          */

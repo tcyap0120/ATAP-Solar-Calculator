@@ -75,6 +75,7 @@ export const calculateScenario = (
 
   const cash = costs.cash;
   const cc = costs.cc;
+  const cc60 = costs.cc60;
 
   const annualSavings = sim.monthlySavings * 12;
   const paybackCash = annualSavings > 0 ? cash / annualSavings : 999;
@@ -91,6 +92,7 @@ export const calculateScenario = (
     batteries: b,
     systemCostCash: cash,
     systemCostCC: cc,
+    systemCostCC60: cc60,
     monthlySavings: sim.monthlySavings,
     savedPercentage: savedPct,
     newBillAmount: sim.newBill.finalTotal,
@@ -496,8 +498,11 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       const roundedAnnualSavings = roundedMonthlySavings * 12;
       const kwpNum = (r.panels * PANEL_WATTAGE) / 1000;
       const kwp = kwpNum.toFixed(2);
+      // Peel the flat SuRIA rebate back out before re-deriving, then re-apply it: the rebate is
+      // not part of the percentage the CC price is derived through.
+      const rebateInCash = r.suriaRebate ?? 0;
       const listPriceCCBeforePromo = augustPromo
-        ? deriveCcFromCash(r.systemCostCash + getAugustPromoDiscount(r.batteries))
+        ? deriveCcFromCash(r.systemCostCash + rebateInCash + getAugustPromoDiscount(r.batteries)) - rebateInCash
         : 0;
 
       const batteryTotalKwhNominal = r.batteries * BATTERY_NOMINAL_KWH;
@@ -519,11 +524,12 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
         msg += `☀️  *${r.panels} ${lang === 'zh' ? '片太阳能板' : 'Panels'} ${kwp} kWp ${batStr}*\n`;
       }
 
-      // When SuRIA rebate is active the stored prices already have the rebate deducted; show pre-rebate first, then after-rebate.
+      // When the SuRIA rebate is active the stored prices already have it deducted; show the
+      // pre-rebate figure first, then the after-rebate one. The rebate now takes the same flat RM
+      // off cash and CC alike, so adding it back is all that is needed — no re-derivation.
       const suriaRebateAmt = r.suriaRebate ?? 3000;
       const cashBeforeRebate = suriaHomeRebate ? r.systemCostCash + suriaRebateAmt : r.systemCostCash;
-      // Derived from the pre-rebate CASH, not the post-rebate CC plus the rebate.
-      const ccBeforeRebate = suriaHomeRebate ? deriveCcFromCash(cashBeforeRebate) : r.systemCostCC;
+      const ccBeforeRebate = suriaHomeRebate ? r.systemCostCC + suriaRebateAmt : r.systemCostCC;
 
       if (lang === 'zh') {
         msg += `📌每月预计节省电费：约 RM${roundedMonthlySavings}+-\n`;
@@ -1379,16 +1385,21 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     [addOns, phase]
   );
 
-  // Result shown on the card: add-on folded into cash first, then CC re-derived from it.
+  // Result shown on the card: add-on folded into cash first, then the CC prices re-derived.
+  // The flat SuRIA rebate is lifted out before deriving and put back after, so it stays a flat RM
+  // off every price rather than being grossed up by the divisor.
   const viewResult = useMemo<RecommendationResult>(() => {
     if (addOnCost <= 0) return result;
+    const rebate = result.suriaRebate ?? 0;
     const cash = result.systemCostCash + addOnCost;
-    const cc = deriveCcFromCash(cash);
+    const cc = deriveCcFromCash(cash + rebate) - rebate;
+    const cc60 = deriveCc60FromCash(cash + rebate) - rebate;
     const annualSavings = result.monthlySavings * 12;
     return {
       ...result,
       systemCostCash: cash,
       systemCostCC: cc,
+      systemCostCC60: cc60,
       paybackYearsCash: annualSavings > 0 ? cash / annualSavings : 999,
       paybackYearsCC: annualSavings > 0 ? cc / annualSavings : 999,
       roiPercentage: cash > 0 ? (annualSavings / cash) * 100 : 0,
@@ -1832,11 +1843,11 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
                 >
                   <span className="text-xs text-slate-500 flex items-baseline gap-1">
                     60m CC Price
-                    <span className="text-[10px] text-slate-400">60m · RM {(deriveCc60FromCash(viewResult.systemCostCash) / 60).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</span>
+                    <span className="text-[10px] text-slate-400">60m · RM {(viewResult.systemCostCC60 / 60).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</span>
                     <ChevronUp size={11} className="self-center text-slate-300 group-hover:text-slate-500 transition-colors" />
                   </span>
                   <span className="font-mono font-bold text-slate-800 text-base">
-                    RM {deriveCc60FromCash(viewResult.systemCostCash).toLocaleString()}
+                    RM {viewResult.systemCostCC60.toLocaleString()}
                   </span>
                 </button>
               ) : (
@@ -2443,8 +2454,8 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
                     const cashAfter = item.data.systemCostCash;
                     const rebateAmt = item.data.suriaRebate ?? 3000;
                     const cashBefore = suriaHomeRebate ? cashAfter + rebateAmt : cashAfter;
-                    // Derived from the pre-rebate CASH, not the post-rebate CC plus the rebate.
-                    const ccBefore = suriaHomeRebate ? deriveCcFromCash(cashBefore) : ccAfter;
+                    // The rebate is a flat RM off both cash and CC, so adding it back is enough.
+                    const ccBefore = suriaHomeRebate ? ccAfter + rebateAmt : ccAfter;
                     return (
                       <td key={idx} className="p-2 sm:p-4 align-top">
                         <div className="space-y-3 sm:space-y-4">
