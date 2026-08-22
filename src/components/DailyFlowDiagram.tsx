@@ -4,7 +4,8 @@ import { calculateBill, getKwhFromBill, simulateSolar } from '../utils/billingEn
 import { BATTERY_CAPACITY_KWH, PANEL_WATTAGE, PEAK_SUN_HOURS } from '../constants';
 import { InputNumber } from './InputNumber';
 import { InputSlider } from './InputSlider';
-import { Zap, DollarSign, Sun, Battery, Home, ArrowRight, Activity, AlertTriangle, RefreshCw, Moon, ArrowDown, Calendar } from 'lucide-react';
+import { Zap, DollarSign, Sun, Battery, Home, Activity, AlertTriangle, RefreshCw, Moon, Calendar } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 interface DailyFlowDiagramProps {
   initialUsage: number;
@@ -146,50 +147,17 @@ export const DailyFlowDiagram: React.FC<DailyFlowDiagramProps> = ({ initialUsage
     return calculateBill(totalImport, totalExport).finalTotal;
   }, [dailyStats]);
 
-  const FlowArrow = ({ val, color, label }: { val: number, color: string, label?: string }) => {
-    if (val <= 0.01) return <div className="hidden"></div>;
-    return (
-      <div className="flex flex-col items-center justify-center relative h-full w-full">
-         {label && <span className="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-tighter">{label}</span>}
-         <div className={`relative h-1.5 w-full rounded-full ${color} bg-opacity-30 overflow-hidden`}>
-            <div className={`absolute inset-0 ${color} animate-flow`}></div>
-         </div>
-         <span className={`text-xs font-bold mt-1 ${color.replace('bg-', 'text-')}`}>
-           {val.toFixed(1)} kWh
-         </span>
-         <style>{`
-            @keyframes flow {
-              0% { transform: translateX(-100%); }
-              100% { transform: translateX(100%); }
-            }
-            .animate-flow {
-              animation: flow 1.5s linear infinite;
-            }
-         `}</style>
-      </div>
-    );
-  };
-
-  const NodeCard = ({ icon, title, value, color, subtext }: any) => (
-    <div className={`flex flex-col items-center justify-center p-4 bg-white border ${color} rounded-xl shadow-sm z-10 w-28 md:w-32 h-28 md:h-32 text-center shrink-0`}>
-      <div className="mb-2">{icon}</div>
-      <div className="font-bold text-slate-800 text-sm leading-tight">{title}</div>
-      <div className="font-mono font-bold text-lg">{value.toFixed(1)} <span className="text-[10px] font-sans font-normal text-slate-400">kWh</span></div>
-      {subtext && <div className="text-[10px] text-slate-400 leading-tight mt-1">{subtext}</div>}
-    </div>
-  );
-
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+    <div className="space-y-5 animate-in fade-in duration-500 pb-20">
       
        {/* Inputs Section */}
        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+        <h2 className="text-xl font-bold text-slate-800 mb-5 flex items-center gap-2">
           <Activity className="text-blue-600" size={24} />
           Daily Simulation
         </h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           <div className="flex flex-col gap-2">
             <InputNumber
               label="Avg. Monthly Bill"
@@ -217,20 +185,6 @@ export const DailyFlowDiagram: React.FC<DailyFlowDiagramProps> = ({ initialUsage
             icon={<Zap size={16}/>}
             unit=" kWh"
           />
-           <div className="flex items-end">
-             <div className="w-full">
-                <InputSlider
-                  label="Daytime Usage %"
-                  value={daytimePercent}
-                  min={0} max={100} unit="%"
-                  onChange={setDaytimePercent}
-                  icon={<Sun size={16}/>}
-               />
-             </div>
-           </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-slate-100">
            <InputNumber 
               label="Solar Panels" 
               value={panelCount} 
@@ -246,171 +200,64 @@ export const DailyFlowDiagram: React.FC<DailyFlowDiagramProps> = ({ initialUsage
               helperText={`${(batteryCount * 16).toFixed(1)} kWh nominal (usable ~${(batteryCount * BATTERY_CAPACITY_KWH).toFixed(1)} kWh/day)`} 
            />
         </div>
+
+        <div className="mt-5 pt-5 border-t border-slate-100">
+          <InputSlider
+            label="Daytime Usage %"
+            value={daytimePercent}
+            min={0} max={100} unit="%"
+            onChange={setDaytimePercent}
+            icon={<Sun size={16}/>}
+          />
+        </div>
       </div>
 
       {/* --- DAYTIME FLOW DIAGRAM --- */}
-      <div className="py-2">
-         <div className="flex items-center gap-2 mb-8 justify-center">
-            <Sun className="text-amber-500 fill-amber-500" size={32} />
-            <h3 className="text-2xl font-bold text-slate-800">Daytime Flow</h3>
+      <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
+         <div className="flex items-center gap-2 mb-4 justify-center">
+            <Sun className="text-amber-500 fill-amber-500" size={26} />
+            <h3 className="text-xl sm:text-2xl font-bold text-slate-800">Daytime Flow</h3>
          </div>
-
-         {/* Scrollable Container for Diagram */}
-         <div className="overflow-x-auto pb-4">
-            <div className="relative min-w-[600px] max-w-4xl mx-auto">
-                {/* Grid Container */}
-                <div className="grid grid-cols-3 items-center justify-items-center gap-4">
-                  
-                  {/* Left: Source (Solar) */}
-                  <div className="">
-                    <NodeCard 
-                      icon={<Sun size={32} className="text-amber-500" />} 
-                      title="Solar Panels" 
-                      value={dailyStats.dailySolarGen} 
-                      color="border-amber-200 ring-4 ring-amber-50"
-                      subtext="Total Generation"
-                    />
-                  </div>
-
-                  {/* Middle: Connections */}
-                  <div className="flex flex-col w-full justify-around py-8 relative px-4 h-full min-h-[400px]">
-                    {/* Solar to Grid (Top) */}
-                    <div className="flex items-center w-full">
-                        <div className="flex-1 -rotate-12 transform origin-left translate-y-4">
-                          <FlowArrow val={dailyStats.solarToGrid} color="bg-blue-500" label="Export" />
-                        </div>
-                    </div>
-
-                    {/* Solar to Home (Middle) */}
-                    <div className="flex items-center w-full">
-                        <div className="flex-1">
-                          <FlowArrow val={dailyStats.solarToHome} color="bg-amber-500" label="Direct Use" />
-                        </div>
-                    </div>
-
-                    {/* Solar to Battery (Bottom) */}
-                    <div className="flex items-center w-full">
-                        <div className="flex-1 rotate-12 transform origin-left -translate-y-4">
-                          <FlowArrow val={dailyStats.solarToBattery} color="bg-emerald-500" label="Charge" />
-                        </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Destinations */}
-                  <div className="flex flex-col w-full items-center gap-12 py-2">
-                    {/* Grid */}
-                    <div className="relative">
-                      <NodeCard 
-                        icon={<Zap size={24} className="text-blue-500" />} 
-                        title="Grid Export" 
-                        value={dailyStats.solarToGrid} 
-                        color="border-blue-200"
-                      />
-                      {/* Grid Import Arrow (Day) - Special Case */}
-                      {dailyStats.gridToHomeDay > 0 && (
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 h-16 w-0.5 bg-blue-300 border-l border-dashed border-blue-400">
-                            <div className="absolute top-1/2 left-4 w-24 -translate-y-1/2">
-                              <span className="text-[10px] text-blue-500 font-bold block">Import</span>
-                              <span className="text-xs font-mono font-bold">{dailyStats.gridToHomeDay.toFixed(1)} kWh</span>
-                            </div>
-                            <ArrowDown size={12} className="absolute bottom-0 -translate-x-1/2 text-blue-400" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Home */}
-                    <div className="relative z-20">
-                        <NodeCard 
-                          icon={<Home size={24} className="text-slate-600" />} 
-                          title="Home Load" 
-                          value={dailyStats.dayDemand} 
-                          color="border-slate-300 bg-slate-50"
-                          subtext="Daytime Usage"
-                        />
-                    </div>
-
-                    {/* Battery */}
-                    <div>
-                        <NodeCard 
-                          icon={<Battery size={24} className="text-emerald-500" />} 
-                          title="Battery" 
-                          value={dailyStats.solarToBattery} 
-                          color="border-emerald-200"
-                          subtext="Charged"
-                        />
-                    </div>
-                  </div>
-                </div>
-            </div>
-         </div>
+         <FlowStage
+           width={900}
+           height={404}
+           nodes={[
+             { id: 'solar', x: 0,   y: 141, Icon: Sun,     title: 'Solar Panels', value: dailyStats.dailySolarGen,  sub: 'Total generation', tone: 'amber' },
+             { id: 'grid',  x: 600, y: 0,   Icon: Zap,     title: 'Grid Export',  value: dailyStats.solarToGrid,    sub: 'Sold back',        tone: 'blue' },
+             { id: 'home',  x: 600, y: 141, Icon: Home,    title: 'Home Load',    value: dailyStats.dayDemand,      sub: 'Daytime usage',    tone: 'slate' },
+             { id: 'batt',  x: 600, y: 282, Icon: Battery, title: 'Battery',      value: dailyStats.solarToBattery, sub: 'Charged',          tone: 'emerald' },
+           ]}
+           edges={[
+             { from: 'solar', to: 'grid', value: dailyStats.solarToGrid,    label: 'Export',     tone: 'blue' },
+             { from: 'solar', to: 'home', value: dailyStats.solarToHome,    label: 'Direct use', tone: 'amber' },
+             { from: 'solar', to: 'batt', value: dailyStats.solarToBattery, label: 'Charge',     tone: 'emerald' },
+             { from: 'grid',  to: 'home', value: dailyStats.gridToHomeDay,  label: 'Import',     tone: 'blue', detour: true },
+           ]}
+         />
       </div>
-
 
       {/* --- NIGHTTIME FLOW DIAGRAM --- */}
-      <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-2xl text-slate-100 overflow-hidden">
-         <div className="flex items-center gap-2 mb-8 justify-center">
-            <Moon className="text-blue-200 fill-blue-200" size={32} />
-            <h3 className="text-2xl font-bold text-white">Nighttime Flow</h3>
+      <div className="bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-800 shadow-2xl text-slate-100">
+         <div className="flex items-center gap-2 mb-4 justify-center">
+            <Moon className="text-blue-200 fill-blue-200" size={26} />
+            <h3 className="text-xl sm:text-2xl font-bold text-white">Nighttime Flow</h3>
          </div>
-
-         <div className="overflow-x-auto pb-4">
-            <div className="relative min-w-[600px] max-w-4xl mx-auto h-[250px]">
-                {/* Grid Container */}
-                <div className="grid grid-cols-3 h-full items-center justify-items-center gap-4">
-                  
-                  {/* Left: Sources */}
-                  <div className="flex flex-col h-full justify-around w-full items-center">
-                    {/* Battery Source */}
-                    <NodeCard 
-                      icon={<Battery size={24} className="text-emerald-500" />} 
-                      title="Battery" 
-                      value={dailyStats.batteryToHome} 
-                      color="border-emerald-800 bg-slate-800 text-slate-200"
-                      subtext="Discharge (90% eff)"
-                    />
-                    
-                    {/* Grid Source */}
-                    <NodeCard 
-                      icon={<Zap size={24} className="text-blue-400" />} 
-                      title="Grid Import" 
-                      value={dailyStats.gridToHomeNight} 
-                      color="border-blue-900 bg-slate-800 text-slate-200"
-                    />
-                  </div>
-
-                  {/* Middle: Connections */}
-                  <div className="flex flex-col h-full w-full justify-around py-8 px-4">
-                    {/* Battery to Home */}
-                    <div className="flex items-center w-full">
-                        <div className="flex-1 rotate-6 transform origin-left">
-                          <FlowArrow val={dailyStats.batteryToHome} color="bg-emerald-500" label="Discharge" />
-                        </div>
-                    </div>
-
-                    {/* Grid to Home */}
-                    <div className="flex items-center w-full">
-                        <div className="flex-1 -rotate-6 transform origin-left">
-                          <FlowArrow val={dailyStats.gridToHomeNight} color="bg-blue-500" label="Import" />
-                        </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Destination (Home) */}
-                  <div className="row-span-2">
-                    <NodeCard 
-                        icon={<Home size={32} className="text-slate-300" />} 
-                        title="Home Load" 
-                        value={dailyStats.nightDemand} 
-                        color="border-slate-600 bg-slate-800 text-slate-100"
-                        subtext="Night Usage"
-                      />
-                  </div>
-
-                </div>
-            </div>
-         </div>
+         <FlowStage
+           dark
+           width={900}
+           height={300}
+           nodes={[
+             { id: 'batt', x: 0,   y: 0,  Icon: Battery, title: 'Battery',     value: dailyStats.batteryToHome,   sub: 'Discharge (90% eff)', tone: 'emerald' },
+             { id: 'grid', x: 0,   y: 178, Icon: Zap,    title: 'Grid Import', value: dailyStats.gridToHomeNight, sub: 'Bought from grid',    tone: 'blue' },
+             { id: 'home', x: 600, y: 89, Icon: Home,    title: 'Home Load',   value: dailyStats.nightDemand,     sub: 'Night usage',         tone: 'slate' },
+           ]}
+           edges={[
+             { from: 'batt', to: 'home', value: dailyStats.batteryToHome,   label: 'Discharge', tone: 'emerald' },
+             { from: 'grid', to: 'home', value: dailyStats.gridToHomeNight, label: 'Import',    tone: 'blue' },
+           ]}
+         />
       </div>
-      
+
       {/* --- MONTHLY PROJECTION --- */}
       <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white p-6 rounded-2xl shadow-lg border border-blue-500/50">
         <h3 className="text-lg font-bold flex items-center gap-2 mb-6">
@@ -456,5 +303,189 @@ export const DailyFlowDiagram: React.FC<DailyFlowDiagramProps> = ({ initialUsage
       </div>
 
     </div>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Flow stage — one responsive SVG per diagram                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The day and night diagrams used to be a 3-column grid of HTML cards with CSS-rotated bars
+ * floating in the middle column. The bars never touched the cards they described, so the picture
+ * read as three disconnected pieces with a lot of dead space between them.
+ *
+ * Both stages are now a single SVG on a fixed viewBox: cards and connectors share one coordinate
+ * system, so a curve genuinely runs from the edge of one card to the edge of another, and the whole
+ * thing scales to any container width instead of needing a horizontal scrollbar on a phone.
+ */
+
+const CARD_W = 152;
+const CARD_H = 122;
+
+type StageTone = 'amber' | 'blue' | 'emerald' | 'slate';
+
+interface StageNode {
+  id: string;
+  x: number;
+  y: number;
+  Icon: LucideIcon;
+  title: string;
+  value: number;
+  sub?: string;
+  tone: StageTone;
+}
+
+interface StageEdge {
+  from: string;
+  to: string;
+  value: number;
+  label: string;
+  tone: StageTone;
+  /** Drawn as a dashed detour around the right of the stage (grid topping up the house by day). */
+  detour?: boolean;
+}
+
+const TONES: Record<StageTone, { line: string; icon: string; text: string }> = {
+  amber: { line: '#f59e0b', icon: '#f59e0b', text: '#b45309' },
+  blue: { line: '#3b82f6', icon: '#3b82f6', text: '#1d4ed8' },
+  emerald: { line: '#10b981', icon: '#10b981', text: '#047857' },
+  slate: { line: '#64748b', icon: '#475569', text: '#334155' },
+};
+
+const LIGHT_CARD: Record<StageTone, { fill: string; stroke: string }> = {
+  amber: { fill: '#fffbeb', stroke: '#fcd34d' },
+  blue: { fill: '#eff6ff', stroke: '#93c5fd' },
+  emerald: { fill: '#ecfdf5', stroke: '#6ee7b7' },
+  slate: { fill: '#f8fafc', stroke: '#cbd5e1' },
+};
+
+const DARK_CARD: Record<StageTone, { fill: string; stroke: string }> = {
+  amber: { fill: '#292524', stroke: '#b45309' },
+  blue: { fill: '#1e293b', stroke: '#1d4ed8' },
+  emerald: { fill: '#1e293b', stroke: '#047857' },
+  slate: { fill: '#1e293b', stroke: '#475569' },
+};
+
+const FlowStage: React.FC<{
+  width: number;
+  height: number;
+  nodes: StageNode[];
+  edges: StageEdge[];
+  dark?: boolean;
+}> = ({ width, height, nodes, edges, dark }) => {
+  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const cards = dark ? DARK_CARD : LIGHT_CARD;
+  const titleFill = dark ? '#e2e8f0' : '#1e293b';
+  const valueFill = dark ? '#f8fafc' : '#0f172a';
+  const subFill = dark ? '#94a3b8' : '#94a3b8';
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      width="100%"
+      style={{ display: 'block', maxWidth: width, margin: '0 auto', height: 'auto' }}
+      role="img"
+    >
+      <style>{`
+        @keyframes dashFlow { to { stroke-dashoffset: -36; } }
+        .flow-line { animation: dashFlow 1.1s linear infinite; }
+        @media (prefers-reduced-motion: reduce) { .flow-line { animation: none; } }
+      `}</style>
+
+      {/* connectors first so the cards sit on top of the line ends */}
+      {edges.filter(e => e.value > 0.01).map((e, i) => {
+        const a = byId[e.from];
+        const b = byId[e.to];
+        if (!a || !b) return null;
+        const tone = TONES[e.tone];
+
+        let d: string;
+        let lx: number;
+        let ly: number;
+
+        if (e.detour) {
+          // Both cards are in the same column: loop out to the right and back in.
+          const x1 = a.x + CARD_W;
+          const y1 = a.y + CARD_H / 2;
+          const x2 = b.x + CARD_W;
+          const y2 = b.y + CARD_H / 2;
+          const out = Math.min(x1, x2) + 74;
+          d = `M ${x1},${y1} H ${out - 22} Q ${out},${y1} ${out},${y1 + 22} V ${y2 - 22} Q ${out},${y2} ${out - 22},${y2} H ${x2}`;
+          lx = out + 8;
+          ly = (y1 + y2) / 2;
+        } else {
+          const x1 = a.x + CARD_W;
+          const y1 = a.y + CARD_H / 2;
+          const x2 = b.x;
+          const y2 = b.y + CARD_H / 2;
+          const bend = Math.max(60, (x2 - x1) * 0.45);
+          d = `M ${x1},${y1} C ${x1 + bend},${y1} ${x2 - bend},${y2} ${x2},${y2}`;
+          lx = (x1 + x2) / 2;
+          ly = (y1 + y2) / 2;
+        }
+
+        return (
+          <g key={i}>
+            <path d={d} fill="none" stroke={tone.line} strokeWidth={3} strokeOpacity={0.22} strokeLinecap="round" />
+            <path
+              className="flow-line"
+              d={d}
+              fill="none"
+              stroke={tone.line}
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeDasharray={e.detour ? '6 8' : '14 22'}
+            />
+            {e.detour ? (
+              <>
+                <text x={lx} y={ly - 4} fontSize={10} fontWeight={800} fill={tone.text} letterSpacing={0.4}>
+                  {e.label.toUpperCase()}
+                </text>
+                <text x={lx} y={ly + 11} fontSize={12} fontWeight={800} fill={tone.line}>
+                  {e.value.toFixed(1)}
+                  <tspan fontSize={9.5} fontWeight={600} fill="#94a3b8"> kWh</tspan>
+                </text>
+              </>
+            ) : (
+              <g transform={`translate(${lx}, ${ly})`}>
+                <rect x={-46} y={-19} width={92} height={38} rx={9} fill={dark ? '#0f172a' : '#ffffff'} stroke={tone.line} strokeOpacity={0.35} />
+                <text x={0} y={-4} textAnchor="middle" fontSize={9.5} fontWeight={800} fill={tone.text} letterSpacing={0.5}>
+                  {e.label.toUpperCase()}
+                </text>
+                <text x={0} y={11} textAnchor="middle" fontSize={13} fontWeight={800} fill={tone.line}>
+                  {e.value.toFixed(1)} kWh
+                </text>
+              </g>
+            )}
+          </g>
+        );
+      })}
+
+      {nodes.map(n => {
+        const c = cards[n.tone];
+        const tone = TONES[n.tone];
+        return (
+          <g key={n.id} transform={`translate(${n.x}, ${n.y})`}>
+            <rect width={CARD_W} height={CARD_H} rx={16} fill={c.fill} stroke={c.stroke} strokeWidth={2} />
+            <g transform={`translate(${CARD_W / 2 - 13}, 14)`}>
+              <n.Icon width={26} height={26} color={tone.icon} />
+            </g>
+            <text x={CARD_W / 2} y={62} textAnchor="middle" fontSize={13} fontWeight={700} fill={titleFill}>
+              {n.title}
+            </text>
+            <text x={CARD_W / 2} y={90} textAnchor="middle" fontSize={23} fontWeight={800} fill={valueFill}>
+              {n.value.toFixed(1)}
+              <tspan fontSize={11} fontWeight={600} fill={subFill}> kWh</tspan>
+            </text>
+            {n.sub && (
+              <text x={CARD_W / 2} y={108} textAnchor="middle" fontSize={10} fill={subFill}>
+                {n.sub}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
   );
 };

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
-import { simulateSolar, calculateBill, getKwhFromBill, calculateSystemCost } from './utils/billingEngine';
+import { simulateSolar, calculateBill, getKwhFromBill } from './utils/billingEngine';
 import { InputSlider } from './components/InputSlider';
 import { InputNumber } from './components/InputNumber';
 import { BillDetails } from './components/BillDetails';
@@ -12,7 +12,8 @@ import { InfoDocs } from './components/InfoDocs';
 import { ForecastTable } from './components/ForecastTable';
 import { DayNightCalculator } from './components/DayNightCalculator';
 import { SubmissionChecklist } from './components/SubmissionChecklist';
-import { PANEL_WATTAGE, BATTERY_CAPACITY_KWH, SINGLE_PHASE_MAX_PANELS } from './constants';
+import { InvestmentCase } from './components/InvestmentCase';
+import { PANEL_WATTAGE, BATTERY_CAPACITY_KWH } from './constants';
 import { Zap, Sun, Battery, DollarSign, Leaf, Calculator, LayoutGrid, BarChart2, Activity, TrendingUp, AlertTriangle, RefreshCw, Download, Lock, ArrowRight, Home, FileText, Table, Menu, X, Building2, Clock, ClipboardCheck } from 'lucide-react';
 
 const CommercialSolarShell = lazy(() => import('./commercial/CommercialSolarShell'));
@@ -24,11 +25,11 @@ const App = () => {
   const [authError, setAuthError] = useState(false);
 
   // Navigation State with Persistence
-  const [activeTab, setActiveTab] = useState<'calculator' | 'planner' | 'graphs' | 'daily' | 'infodocs' | 'forecast' | 'daynight' | 'checklist' | 'commercial'>(() => {
+  const [activeTab, setActiveTab] = useState<'calculator' | 'planner' | 'graphs' | 'daily' | 'infodocs' | 'forecast' | 'daynight' | 'checklist' | 'investment' | 'commercial'>(() => {
     const saved = localStorage.getItem('solar_activeTab');
     // 'forms' deliberately absent — the Forms page is hidden, so anyone who left the app on it
     // lands back on the recommender instead of a blank screen.
-    const ok = saved === 'calculator' || saved === 'planner' || saved === 'graphs' || saved === 'daily' || saved === 'infodocs' || saved === 'forecast' || saved === 'daynight' || saved === 'checklist' || saved === 'commercial';
+    const ok = saved === 'calculator' || saved === 'planner' || saved === 'graphs' || saved === 'daily' || saved === 'infodocs' || saved === 'forecast' || saved === 'daynight' || saved === 'checklist' || saved === 'investment' || saved === 'commercial';
     return ok ? saved : 'planner';
   });
 
@@ -155,16 +156,6 @@ const App = () => {
     return simulateSolar(safeUsage, daytimePercent, panelCount, batteryCount);
   }, [usageKwh, daytimePercent, panelCount, batteryCount]);
 
-  // System Cost Calculation for Calculator Tab
-  const systemCost = useMemo(() => {
-    // Single-phase sheet runs to 24 panels; above that use three-phase tier pricing.
-    const estimatedPhase = panelCount > SINGLE_PHASE_MAX_PANELS ? 'three' : 'single';
-    return calculateSystemCost(panelCount, batteryCount, estimatedPhase, {
-      augustPromo,
-      suriaHomeRebate
-    });
-  }, [panelCount, batteryCount, augustPromo, suriaHomeRebate]);
-
   const savingsPercent = simulation.originalBill.finalTotal > 0
     ? (simulation.monthlySavings / simulation.originalBill.finalTotal) * 100
     : 0;
@@ -177,6 +168,7 @@ const App = () => {
   // Navigation Items Config
   const navItems = [
     { id: 'planner', label: 'Recommender', icon: LayoutGrid },
+    { id: 'investment', label: 'Investment Case', icon: TrendingUp },
     { id: 'daynight', label: 'DayNight Usage', icon: Clock },
     { id: 'calculator', label: 'Calculator', icon: Calculator },
     { id: 'graphs', label: 'Graph', icon: BarChart2 },
@@ -497,46 +489,9 @@ const App = () => {
                 </div>
               </div>
 
-              {/* System Price Est. */}
-              {systemCost && (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                  <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <DollarSign className="text-emerald-600" size={20} />
-                    Est. System Price
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-500 text-sm">Credit Card Price</span>
-                      <span className="font-bold text-slate-900 text-lg">RM {systemCost.cc.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-500 text-sm">Cash Price</span>
-                      <span className="font-bold text-emerald-600 text-lg">RM {systemCost.cash.toLocaleString()}</span>
-                    </div>
-                    {typeof systemCost.manualBackupBoxRM === 'number' && systemCost.manualBackupBoxRM > 0 && (
-                      <div className="flex justify-between items-center text-xs text-slate-600 bg-slate-50 rounded-lg px-2 py-1.5">
-                        <span>Manual backup box</span>
-                        <span className="font-semibold">+RM {systemCost.manualBackupBoxRM.toLocaleString()}</span>
-                      </div>
-                    )}
-                    {typeof systemCost.augustPromoDiscount === 'number' && systemCost.augustPromoDiscount > 0 && (
-                      <div className="flex justify-between items-center text-xs text-amber-800 bg-amber-50 rounded-lg px-2 py-1.5">
-                        <span>August Promo</span>
-                        <span className="font-semibold">−RM {systemCost.augustPromoDiscount.toLocaleString()}</span>
-                      </div>
-                    )}
-                    {typeof systemCost.suriaRebate === 'number' && systemCost.suriaRebate > 0 && (
-                      <div className="flex justify-between items-center text-xs text-emerald-800 bg-emerald-50 rounded-lg px-2 py-1.5">
-                        <span>SuRIA Home Rebate</span>
-                        <span className="font-semibold">−RM {systemCost.suriaRebate.toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="text-[10px] text-slate-400 pt-2 border-t border-slate-50 text-center">
-                      Based on {panelCount > SINGLE_PHASE_MAX_PANELS ? '3-Phase' : 'Single Phase'} Inverter
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* The "Est. System Price" card was removed from this page — pricing is quoted from
+                  the Recommender and the Investment Case, so a second figure here only invited
+                  mismatches. Its calculateSystemCost memo went with it, as nothing else used it. */}
 
               {/* Oversized Warning */}
               {isExportOversized && (
@@ -638,6 +593,14 @@ const App = () => {
             onAugustPromoChange={handleAugustPromoChange}
             suriaHomeRebate={suriaHomeRebate}
             onSuriaHomeRebateChange={setSuriaHomeRebate}
+          />
+        </div>
+
+        <div className={activeTab === 'investment' ? 'block animate-in fade-in duration-300' : 'hidden'}>
+          <InvestmentCase
+            initialUsage={typeof usageKwh === 'number' ? usageKwh : 0}
+            augustPromo={augustPromo}
+            suriaHomeRebate={suriaHomeRebate}
           />
         </div>
 

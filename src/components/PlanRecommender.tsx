@@ -42,8 +42,10 @@ interface PlanRecommenderProps {
   onSuriaHomeRebateChange: (value: boolean) => void;
 }
 
-// Helper function to calculate a scenario result
-const calculateScenario = (
+// Helper function to calculate a scenario result.
+// Exported so other pages (e.g. InvestmentCase) price a system through exactly this path rather
+// than reimplementing it and drifting.
+export const calculateScenario = (
   p: number,
   b: number,
   usageKwh: number,
