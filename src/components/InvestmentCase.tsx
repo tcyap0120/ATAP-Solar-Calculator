@@ -9,7 +9,7 @@ import { PANEL_WATTAGE, BATTERY_NOMINAL_KWH } from '../constants';
 import { captureFixedWidthElement, shareCanvas, downloadCanvas, ShareOutcome } from '../utils/shareImage';
 
 /**
- * Investment Case — a one-page landscape poster an agent generates for a specific customer and
+ * Investment Case — a one-page portrait poster an agent generates for a specific customer and
  * sends straight to WhatsApp. It argues one thing: the monthly bill is money already being spent,
  * so solar is not an expense but an investment that pays back and then keeps paying.
  *
@@ -18,11 +18,11 @@ import { captureFixedWidthElement, shareCanvas, downloadCanvas, ShareOutcome } f
  * an agent negotiating a specific deal can type over the system price or the monthly saving, and
  * the whole poster and chart re-derive from what they typed. Edited fields show a reset arrow.
  *
- * The poster renders at a fixed 1600px width and is only scaled for preview, so the exported image
- * is identical on a phone and a desktop.
+ * The poster is portrait, renders at a fixed 1200px width and is only scaled for preview, so the
+ * exported image is identical on a phone and a desktop.
  */
 
-const POSTER_WIDTH = 1600;
+const POSTER_WIDTH = 1200;
 
 /**
  * astern_logo.png is a 1920x1080 canvas with the mark sitting in the middle and a lot of empty
@@ -78,7 +78,7 @@ const S = {
     afterYears: (y: number) => `After ${y} years you will have:`,
     bullet1: 'Total saved approx.',
     bullet2: 'System still running',
-    bullet2sub: '(panels warranted 25+ years)',
+    bullet2sub: '(panels last 30-40 years)',
     bullet3: 'Tariffs keep rising —',
     bullet3sub: 'your savings only grow',
     netTitle: (y: number) => `${y}-Year Net Benefit (Est.)`,
@@ -87,7 +87,7 @@ const S = {
     b1: 'Beat Rising Tariffs',
     b1s: 'Lock in your cost today',
     b2: 'Built to Last',
-    b2s: '25-year panel warranty',
+    b2s: '30-year performance warranty',
     b3: 'Battery Backup',
     b3s: 'Power through outages',
     b4: 'Property Value',
@@ -146,7 +146,7 @@ const S = {
     afterYears: (y: number) => `${y} 年后，您将拥有：`,
     bullet1: '累计节省约',
     bullet2: '系统仍可继续使用',
-    bullet2sub: '（电板寿命 25 年以上）',
+    bullet2sub: '（电板寿命可达 30–40 年）',
     bullet3: '电费持续上涨，',
     bullet3sub: '您的节省只会更多',
     netTitle: (y: number) => `${y}年净收益（估算）`,
@@ -155,7 +155,7 @@ const S = {
     b1: '电费上涨不怕',
     b1s: '锁定长期电价',
     b2: '长效耐用',
-    b2s: '电板 25 年保证',
+    b2s: '电板 30 年性能保证',
     b3: '电池储能',
     b3s: '停电也不怕',
     b4: '提升房产价值',
@@ -211,13 +211,13 @@ export const InvestmentCase: React.FC<InvestmentCaseProps> = ({
 }) => {
   const [lang, setLang] = useState<Lang>('zh');
   const [phase, setPhase] = useState<'single' | 'three'>('three');
-  const [bill, setBill] = useState<number>(2000);
+  const [bill, setBill] = useState<number>(1000);
   const [usageOverride, setUsageOverride] = useState<number | null>(null);
-  const [daytimePercent, setDaytimePercent] = useState(50);
+  const [daytimePercent, setDaytimePercent] = useState(30);
   const [panels, setPanels] = useState(32);
   const [batteries, setBatteries] = useState(3);
   const [plan, setPlan] = useState<Plan>('cc36');
-  const [horizon, setHorizon] = useState(30);
+  const [horizon, setHorizon] = useState(20);
   const [tariffGrowth, setTariffGrowth] = useState(0);
   const [customer, setCustomer] = useState('');
   const [agent, setAgent] = useState('');
@@ -394,8 +394,8 @@ export const InvestmentCase: React.FC<InvestmentCaseProps> = ({
             </h2>
             <p className="text-xs text-slate-500">
               {lang === 'zh'
-                ? '生成一张可直接发送给客户的横向图片'
-                : 'Generate a landscape image you can send straight to a customer'}
+                ? '生成一张可直接发送给客户的竖向海报'
+                : 'Generate a portrait poster you can send straight to a customer'}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -436,7 +436,7 @@ export const InvestmentCase: React.FC<InvestmentCaseProps> = ({
                   onClick={() => setPhase(p)}
                   className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all ${phase === p ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200'}`}
                 >
-                  {p === 'single' ? (lang === 'zh' ? '单相' : '1φ') : (lang === 'zh' ? '三相' : '3φ')}
+                  {p === 'single' ? (lang === 'zh' ? '单相' : '1Phase') : (lang === 'zh' ? '三相' : '3Phase')}
                 </button>
               ))}
             </div>
@@ -695,185 +695,203 @@ const Poster = React.forwardRef<HTMLDivElement, PosterProps>((p, ref) => {
         background: '#ffffff',
         fontFamily: font,
         color: '#0f172a',
-        padding: 32,
         boxSizing: 'border-box',
       }}
     >
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, marginBottom: 20 }}>
-        <div style={logoBox(116).wrap}>
-          <img
-            src={`${(import.meta as any).env.BASE_URL}astern_logo.png`}
-            alt="Astern Technologies"
-            style={logoBox(116).img}
-          />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: cjk ? 52 : 44, fontWeight: 800, lineHeight: 1.1, letterSpacing: cjk ? 0 : -0.5 }}>
-            {t.headline}
+      {/* Masthead — a solid band anchors the top of a tall page and gives the logo somewhere
+          to sit that is not competing with the headline. */}
+      <div style={{
+        background: `linear-gradient(135deg, ${NAVY} 0%, #1b5a8c 100%)`,
+        padding: '22px 36px 26px',
+        color: '#fff',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
+          <div style={{ background: '#fff', borderRadius: 12, padding: '12px 16px', flexShrink: 0 }}>
+            <div style={logoBox(88).wrap}>
+              <img
+                src={`${(import.meta as any).env.BASE_URL}astern_logo.png`}
+                alt="Astern Technologies"
+                style={logoBox(88).img}
+              />
+            </div>
           </div>
-          <div style={{ fontSize: 20, color: '#475569', marginTop: 8, fontWeight: 600 }}>{t.sub}</div>
+          <div style={{ textAlign: 'right', fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+            {p.customer && (
+              <div>
+                {t.preparedFor}: <b style={{ color: '#fff', fontSize: 15 }}>{p.customer}</b>
+              </div>
+            )}
+            {p.agent && (
+              <div style={{ marginTop: 2 }}>
+                {t.by}: <b style={{ color: '#fff', fontSize: 15 }}>{p.agent}</b>
+              </div>
+            )}
+          </div>
         </div>
-        <div style={{ textAlign: 'right', fontSize: 13, color: '#64748b', flexShrink: 0, paddingTop: 4 }}>
-          {p.customer && (
-            <div style={{ marginBottom: 4 }}>
-              <span style={{ color: '#94a3b8' }}>{t.preparedFor}: </span>
-              <b style={{ color: '#0f172a', fontSize: 15 }}>{p.customer}</b>
-            </div>
-          )}
-          {p.agent && (
-            <div>
-              <span style={{ color: '#94a3b8' }}>{t.by}: </span>
-              <b style={{ color: '#0f172a', fontSize: 15 }}>{p.agent}</b>
-            </div>
-          )}
+
+        <div style={{
+          fontSize: cjk ? 60 : 50, fontWeight: 800, lineHeight: 1.08,
+          letterSpacing: cjk ? 0 : -1, marginTop: 18,
+        }}>
+          {t.headline}
+        </div>
+        <div style={{ fontSize: 20, marginTop: 10, fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>
+          {t.sub}
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-        {/* ============ LEFT ============ */}
-        <div style={{ width: 952, flexShrink: 0 }}>
-          {/* System chip */}
-          <div style={{
-            background: NAVY, color: '#fff', borderRadius: 12, padding: '12px 22px',
-            fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14,
-          }}>
-            <Sun size={24} color="#fbbf24" />
-            <span>{p.panels} {t.panels} {p.kwp.toFixed(2)} kWp</span>
-            {p.batteries > 0 && (
-              <>
-                <span style={{ opacity: 0.5 }}>+</span>
-                <Battery size={24} color="#4ade80" />
-                <span>{p.batteries} {t.batteries} {p.batteries * BATTERY_NOMINAL_KWH} kWh</span>
-              </>
-            )}
-          </div>
-
-          {/* Three stat cards */}
-          <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
-            <StatCard
-              label={t.billNow}
-              value={`RM ${fmt(p.bill)}`}
-              tone="slate"
-              sub={`${fmt(p.usage)} kWh ${t.perMonth}`}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', fontSize: 30, color: '#94a3b8', fontWeight: 800 }}>→</div>
-            <StatCard
-              label={t.afterSolar}
-              value={`RM ${fmt(p.savings)}`}
-              tone="green"
-              sub={`${t.remaining} RM ${fmt(p.remainingBill)} ${t.perMonth}`}
-            />
-            <StatCard
-              label={t.annualSaving}
-              value={`RM ${fmt(p.annualSaving)}`}
-              tone="greenSolid"
-              sub={t.annualSub}
-            />
-          </div>
-
-          {/* Chart */}
-          <div style={{
-            border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', marginBottom: 14,
-          }}>
-            <div style={{ background: NAVY, color: '#fff', padding: '10px 18px', fontSize: 19, fontWeight: 800 }}>
-              {t.chartTitle(p.horizon)}
-            </div>
-            <div style={{ display: 'flex', padding: 14, gap: 12 }}>
-              <CashflowChart {...p} />
-              <SummaryColumn {...p} />
-            </div>
-          </div>
-
-          {/* Benefits */}
-          <div style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: '12px 16px' }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: NAVY, marginBottom: 10 }}>{t.benefitsTitle}</div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <Benefit icon={<TrendingUp size={22} color="#f59e0b" />} title={t.b1} sub={t.b1s} />
-              <Benefit icon={<ShieldCheck size={22} color="#16a34a" />} title={t.b2} sub={t.b2s} />
-              <Benefit icon={<Battery size={22} color="#0ea5e9" />} title={t.b3} sub={t.b3s} />
-              <Benefit icon={<Home size={22} color="#8b5cf6" />} title={t.b4} sub={t.b4s} />
-              <Benefit icon={<Leaf size={22} color="#10b981" />} title={t.b5} sub={t.b5s} />
-            </div>
-          </div>
+      <div style={{ padding: '20px 36px 28px' }}>
+        {/* System */}
+        <div style={{
+          border: `2px solid ${NAVY}`, borderRadius: 12, padding: '12px 22px',
+          fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center',
+          justifyContent: 'center', gap: 12, marginBottom: 16, color: NAVY,
+        }}>
+          <Sun size={24} color="#f59e0b" />
+          <span>{p.panels} {t.panels} · {p.kwp.toFixed(2)} kWp</span>
+          {p.batteries > 0 && (
+            <>
+              <span style={{ opacity: 0.35 }}>+</span>
+              <Battery size={24} color="#10b981" />
+              <span>{p.batteries} {t.batteries} · {p.batteries * BATTERY_NOMINAL_KWH} kWh</span>
+            </>
+          )}
         </div>
 
-        {/* ============ RIGHT ============ */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Investment */}
-          <div style={{ border: `2px solid ${NAVY}`, borderRadius: 14, overflow: 'hidden' }}>
-            <div style={{ background: NAVY, color: '#fff', padding: '10px 18px', fontSize: 19, fontWeight: 800, textAlign: 'center' }}>
-              {t.investTitle}
+        {/* Bill -> savings -> annual */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'stretch' }}>
+          <StatCard
+            label={t.billNow}
+            value={`RM ${fmt(p.bill)}`}
+            tone="slate"
+            sub={`${fmt(p.usage)} kWh ${t.perMonth}`}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', fontSize: 32, color: '#cbd5e1', fontWeight: 800 }}>→</div>
+          <StatCard
+            label={t.afterSolar}
+            value={`RM ${fmt(p.savings)}`}
+            tone="green"
+            sub={`${t.remaining} RM ${fmt(p.remainingBill)} ${t.perMonth}`}
+          />
+          <StatCard
+            label={t.annualSaving}
+            value={`RM ${fmt(p.annualSaving)}`}
+            tone="greenSolid"
+            sub={t.annualSub}
+          />
+        </div>
+
+        {/* Investment + cash flow */}
+        <div style={{ border: `2px solid ${NAVY}`, borderRadius: 14, overflow: 'hidden', marginBottom: 16 }}>
+          <div style={{ background: NAVY, color: '#fff', padding: '10px 18px', fontSize: 19, fontWeight: 800, textAlign: 'center' }}>
+            {t.investTitle}
+          </div>
+          <div style={{ display: 'flex', padding: '16px 18px', textAlign: 'center', alignItems: 'center' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, color: '#64748b', fontWeight: 700 }}>{t.totalPrice}</div>
+              <div style={{ fontSize: 38, fontWeight: 800, color: NAVY, marginTop: 2 }}>RM {fmt(p.price)}</div>
             </div>
-            <div style={{ display: 'flex', padding: '16px 12px', textAlign: 'center' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, color: '#64748b', fontWeight: 700 }}>{t.totalPrice}</div>
-                <div style={{ fontSize: 34, fontWeight: 800, color: NAVY, marginTop: 4 }}>RM {fmt(p.price)}</div>
-              </div>
+            <div style={{ width: 1, alignSelf: 'stretch', background: '#e2e8f0' }} />
+            <div style={{ flex: 1 }}>
               {p.termMonths > 0 ? (
                 <>
-                  <div style={{ width: 1, background: '#e2e8f0' }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, color: '#64748b', fontWeight: 700 }}>{t.installment(p.termMonths)}</div>
-                    <div style={{ fontSize: 34, fontWeight: 800, color: NAVY, marginTop: 4 }}>
-                      RM {fmt2(p.installmentMonthly)}
-                      <span style={{ fontSize: 16, fontWeight: 700, color: '#64748b' }}> {t.perMonth}</span>
-                    </div>
+                  <div style={{ fontSize: 14, color: '#64748b', fontWeight: 700 }}>{t.installment(p.termMonths)}</div>
+                  <div style={{ fontSize: 38, fontWeight: 800, color: NAVY, marginTop: 2 }}>
+                    RM {fmt2(p.installmentMonthly)}
+                    <span style={{ fontSize: 16, fontWeight: 700, color: '#64748b' }}> {t.perMonth}</span>
                   </div>
                 </>
               ) : (
                 <>
-                  <div style={{ width: 1, background: '#e2e8f0' }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, color: '#64748b', fontWeight: 700 }}>{t.cashTitle}</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: GREEN, marginTop: 10 }}>{t.cashSub}</div>
-                  </div>
+                  <div style={{ fontSize: 14, color: '#64748b', fontWeight: 700 }}>{t.cashTitle}</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: GREEN, marginTop: 8 }}>{t.cashSub}</div>
                 </>
               )}
             </div>
-
-            {p.termMonths > 0 && (
-              <div style={{ padding: '0 14px 14px' }}>
-                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: 12 }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: '#1d4ed8', textAlign: 'center', marginBottom: 10 }}>
-                    {t.cashflowTitle(p.termMonths)}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-                    <MiniStat label={t.monthlySaved} value={`RM ${fmt(p.savings)}`} color={GREEN} />
-                    <span style={{ fontSize: 22, fontWeight: 800, color: '#64748b' }}>−</span>
-                    <MiniStat label={t.monthlyPay} value={`RM ${fmt2(p.installmentMonthly)}`} color="#1d4ed8" />
-                    <span style={{ fontSize: 22, fontWeight: 800, color: '#64748b' }}>=</span>
-                    <MiniStat
-                      label={t.netMonthly}
-                      value={`${p.netMonthly < 0 ? '−' : '+'} RM ${fmt2(Math.abs(p.netMonthly))}`}
-                      color={p.netMonthly < 0 ? RED : GREEN}
-                    />
-                  </div>
-                  {p.netMonthly < 0 && (
-                    <div style={{ marginTop: 10, fontSize: 13, color: '#334155', lineHeight: 1.5, background: '#fff', borderRadius: 8, padding: '8px 10px' }}>
-                      💡 {t.extraNote(fmt2(Math.abs(p.netMonthly)), p.termMonths)}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* After the installment / from day one */}
-          <div style={{ border: '2px solid #bbf7d0', borderRadius: 14, padding: 16, background: '#f0fdf4' }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: '#15803d' }}>
-              {p.termMonths > 0 ? t.afterEndTitle(p.termMonths + 1) : t.fromDayOne}
+          {p.termMonths > 0 && (
+            <div style={{ padding: '0 18px 18px' }}>
+              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: 14 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#1d4ed8', textAlign: 'center', marginBottom: 10 }}>
+                  {t.cashflowTitle(p.termMonths)}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <MiniStat label={t.monthlySaved} value={`RM ${fmt(p.savings)}`} color={GREEN} />
+                  <span style={{ fontSize: 24, fontWeight: 800, color: '#94a3b8' }}>−</span>
+                  <MiniStat label={t.monthlyPay} value={`RM ${fmt2(p.installmentMonthly)}`} color="#1d4ed8" />
+                  <span style={{ fontSize: 24, fontWeight: 800, color: '#94a3b8' }}>=</span>
+                  <MiniStat
+                    label={t.netMonthly}
+                    value={`${p.netMonthly < 0 ? '−' : '+'} RM ${fmt2(Math.abs(p.netMonthly))}`}
+                    color={p.netMonthly < 0 ? RED : GREEN}
+                  />
+                </div>
+                {p.netMonthly < 0 && (
+                  <div style={{ marginTop: 10, fontSize: 13.5, color: '#334155', lineHeight: 1.5, background: '#fff', borderRadius: 8, padding: '9px 12px' }}>
+                    💡 {t.extraNote(fmt2(Math.abs(p.netMonthly)), p.termMonths)}
+                  </div>
+                )}
+              </div>
             </div>
-            <div style={{ fontSize: 30, fontWeight: 800, color: '#166534', marginTop: 6, lineHeight: 1.2 }}>
-              {t.afterEndBig(fmt(p.savings))}
+          )}
+        </div>
+
+        {/* Chart */}
+        <div style={{ border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', marginBottom: 16 }}>
+          <div style={{ background: NAVY, color: '#fff', padding: '10px 18px', fontSize: 19, fontWeight: 800 }}>
+            {t.chartTitle(p.horizon)}
+          </div>
+          <div style={{ padding: 14 }}>
+            <CashflowChart {...p} chartW={1100} chartH={420} />
+          </div>
+        </div>
+
+        {/* What it adds up to */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'stretch' }}>
+          <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 14, padding: 16 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginBottom: 10 }}>
+              {t.afterYears(p.horizon)}
             </div>
-            <div style={{ fontSize: 19, fontWeight: 700, color: '#15803d', marginTop: 4 }}>
-              {t.afterEndYear(fmt(p.annualSaving))}
+            <div style={{ display: 'flex', gap: 18 }}>
+              <div style={{ flex: 1 }}>
+                <Tick text={t.bullet1} strong={`RM ${fmt(p.netBenefit)}`} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Tick text={t.bullet2} sub={t.bullet2sub} />
+                <Tick text={t.bullet3} sub={t.bullet3sub} />
+              </div>
             </div>
-            <div style={{ fontSize: 14, color: '#3f6212', marginTop: 6 }}>{t.afterEndSub}</div>
+          </div>
+          <div style={{
+            width: 330, flexShrink: 0,
+            background: 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)',
+            borderRadius: 14, padding: 16, color: '#fff', textAlign: 'center',
+            display: 'flex', flexDirection: 'column', justifyContent: 'center',
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.95 }}>{t.netTitle(p.horizon)}</div>
+            <div style={{ fontSize: 42, fontWeight: 800, marginTop: 2, lineHeight: 1.1 }}>RM {fmt(p.netBenefit)}</div>
+          </div>
+        </div>
+
+        {/* Life after the installment */}
+        <div style={{ border: '2px solid #bbf7d0', borderRadius: 14, padding: 18, background: '#f0fdf4', marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#15803d' }}>
+                {p.termMonths > 0 ? t.afterEndTitle(p.termMonths + 1) : t.fromDayOne}
+              </div>
+              <div style={{ fontSize: 34, fontWeight: 800, color: '#166534', marginTop: 4, lineHeight: 1.15 }}>
+                {t.afterEndBig(fmt(p.savings))}
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#15803d', marginTop: 4 }}>
+                {t.afterEndYear(fmt(p.annualSaving))}
+              </div>
+              <div style={{ fontSize: 14, color: '#3f6212', marginTop: 6 }}>{t.afterEndSub}</div>
+            </div>
 
             {p.termMonths > 0 && (
-              <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+              <div style={{ display: 'flex', gap: 10, width: 620, flexShrink: 0 }}>
                 <PhaseBox
                   title={t.phase1(p.termMonths)}
                   tone="blue"
@@ -895,23 +913,35 @@ const Poster = React.forwardRef<HTMLDivElement, PosterProps>((p, ref) => {
               </div>
             )}
           </div>
+        </div>
 
-          {/* Closing */}
-          <div style={{
-            background: `linear-gradient(135deg, ${NAVY} 0%, #1e5e8e 100%)`,
-            borderRadius: 14, padding: '16px 20px', color: '#fff', marginTop: 'auto',
-          }}>
-            <div style={{ fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Zap size={26} color="#fbbf24" />
-              {t.closing}
-            </div>
-            <div style={{ fontSize: 15, marginTop: 6, opacity: 0.9 }}>{t.closingSub(p.horizon)}</div>
+        {/* Benefits */}
+        <div style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: '14px 18px', marginBottom: 16 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: NAVY, marginBottom: 12 }}>{t.benefitsTitle}</div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Benefit icon={<TrendingUp size={24} color="#f59e0b" />} title={t.b1} sub={t.b1s} />
+            <Benefit icon={<ShieldCheck size={24} color="#16a34a" />} title={t.b2} sub={t.b2s} />
+            <Benefit icon={<Battery size={24} color="#0ea5e9" />} title={t.b3} sub={t.b3s} />
+            <Benefit icon={<Home size={24} color="#8b5cf6" />} title={t.b4} sub={t.b4s} />
+            <Benefit icon={<Leaf size={24} color="#10b981" />} title={t.b5} sub={t.b5s} />
           </div>
         </div>
-      </div>
 
-      <div style={{ marginTop: 14, fontSize: 11, color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
-        {t.disclaimer}
+        {/* Closing */}
+        <div style={{
+          background: `linear-gradient(135deg, ${NAVY} 0%, #1e5e8e 100%)`,
+          borderRadius: 14, padding: '18px 24px', color: '#fff', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 28, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+            <Zap size={28} color="#fbbf24" />
+            {t.closing}
+          </div>
+          <div style={{ fontSize: 16, marginTop: 6, opacity: 0.9 }}>{t.closingSub(p.horizon)}</div>
+        </div>
+
+        <div style={{ marginTop: 14, fontSize: 11, color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
+          {t.disclaimer}
+        </div>
       </div>
     </div>
   );
@@ -972,29 +1002,6 @@ const PhaseBox: React.FC<{ title: string; tone: 'blue' | 'green'; rows: [string,
   );
 };
 
-const SummaryColumn: React.FC<PosterProps> = (p) => {
-  const { t } = p;
-  return (
-    <div style={{ width: 250, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>
-          {t.afterYears(p.horizon)}
-        </div>
-        <Tick text={t.bullet1} strong={`RM ${fmt(p.netBenefit)}`} />
-        <Tick text={t.bullet2} sub={t.bullet2sub} />
-        <Tick text={t.bullet3} sub={t.bullet3sub} />
-      </div>
-      <div style={{
-        background: `linear-gradient(135deg, #15803d 0%, #16a34a 100%)`, borderRadius: 12,
-        padding: 12, color: '#fff', textAlign: 'center',
-      }}>
-        <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.95 }}>{t.netTitle(p.horizon)}</div>
-        <div style={{ fontSize: 32, fontWeight: 800, marginTop: 2, lineHeight: 1.15 }}>RM {fmt(p.netBenefit)}</div>
-      </div>
-    </div>
-  );
-};
-
 const Tick: React.FC<{ text: string; strong?: string; sub?: string }> = ({ text, strong, sub }) => (
   <div style={{ display: 'flex', gap: 6, marginBottom: 7 }}>
     <CheckCircle2 size={15} color={GREEN} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -1008,11 +1015,11 @@ const Tick: React.FC<{ text: string; strong?: string; sub?: string }> = ({ text,
 
 /* ---------- the chart ---------- */
 
-const CashflowChart: React.FC<PosterProps> = (p) => {
+const CashflowChart: React.FC<PosterProps & { chartW?: number; chartH?: number }> = (p) => {
   const { t, series, horizon, breakEven } = p;
 
-  const W = 646, H = 300;
-  const M = { top: 24, right: 58, bottom: 34, left: 74 };
+  const W = p.chartW ?? 646, H = p.chartH ?? 300;
+  const M = { top: 28, right: 84, bottom: 52, left: 116 };
   const iw = W - M.left - M.right;
   const ih = H - M.top - M.bottom;
 
@@ -1037,33 +1044,33 @@ const CashflowChart: React.FC<PosterProps> = (p) => {
 
   return (
     <svg width={W} height={H} style={{ display: 'block' }}>
-      <text x={4} y={12} fontSize={11} fill="#64748b" fontWeight={700}>{t.axisY}</text>
+      <text x={4} y={14} fontSize={16} fill="#64748b" fontWeight={700}>{t.axisY}</text>
 
       {gridVals.map(v => (
         <g key={v}>
           <line x1={M.left} x2={M.left + iw} y1={y(v)} y2={y(v)} stroke="#e2e8f0" strokeWidth={1} />
-          <text x={M.left - 6} y={y(v) + 4} fontSize={10.5} fill="#94a3b8" textAnchor="end">
+          <text x={M.left - 10} y={y(v) + 6} fontSize={16} fill="#94a3b8" textAnchor="end">
             {v === 0 ? 'RM 0' : `RM ${fmt(v)}`}
           </text>
         </g>
       ))}
 
       {xTicks.map(v => (
-        <text key={v} x={x(v)} y={M.top + ih + 18} fontSize={11} fill="#64748b" textAnchor="middle" fontWeight={600}>
+        <text key={v} x={x(v)} y={M.top + ih + 26} fontSize={17} fill="#64748b" textAnchor="middle" fontWeight={600}>
           {v}{t.year}
         </text>
       ))}
 
       {/* without solar */}
-      <polyline points={pts(series.without)} fill="none" stroke={RED} strokeWidth={3} strokeLinejoin="round" />
+      <polyline points={pts(series.without)} fill="none" stroke={RED} strokeWidth={4} strokeLinejoin="round" />
       {dotYears.map(i => (
-        <circle key={`r${i}`} cx={x(i)} cy={y(series.without[i])} r={3.2} fill={RED} />
+        <circle key={`r${i}`} cx={x(i)} cy={y(series.without[i])} r={4.5} fill={RED} />
       ))}
 
       {/* with solar */}
-      <polyline points={pts(series.withSolar)} fill="none" stroke={GREEN} strokeWidth={3} strokeLinejoin="round" />
+      <polyline points={pts(series.withSolar)} fill="none" stroke={GREEN} strokeWidth={4} strokeLinejoin="round" />
       {dotYears.map(i => (
-        <circle key={`g${i}`} cx={x(i)} cy={y(series.withSolar[i])} r={3.2} fill={GREEN} />
+        <circle key={`g${i}`} cx={x(i)} cy={y(series.withSolar[i])} r={4.5} fill={GREEN} />
       ))}
 
       {/* end labels */}
@@ -1083,34 +1090,34 @@ const CashflowChart: React.FC<PosterProps> = (p) => {
             x1={x(breakEven)} x2={x(breakEven)} y1={M.top + ih} y2={y(crossVal)}
             stroke={GREEN} strokeWidth={1.5} strokeDasharray="4 3"
           />
-          <circle cx={x(breakEven)} cy={y(crossVal)} r={6} fill="#fff" stroke={GREEN} strokeWidth={3} />
-          <g transform={`translate(${Math.min(x(breakEven) + 8, M.left + iw - 150)}, ${M.top + ih - 96})`}>
-            <rect width={148} height={40} rx={8} fill="#f0fdf4" stroke={GREEN} strokeWidth={1.5} />
-            <text x={10} y={17} fontSize={12.5} fontWeight={800} fill="#15803d">{t.breakEven(breakEven.toFixed(1))}</text>
-            <text x={10} y={32} fontSize={11} fill="#4d7c0f">{t.breakEvenSub}</text>
+          <circle cx={x(breakEven)} cy={y(crossVal)} r={8} fill="#fff" stroke={GREEN} strokeWidth={4} />
+          <g transform={`translate(${Math.min(x(breakEven) + 12, M.left + iw - 210)}, ${M.top + ih - 118})`}>
+            <rect width={206} height={56} rx={10} fill="#f0fdf4" stroke={GREEN} strokeWidth={2} />
+            <text x={14} y={24} fontSize={17} fontWeight={800} fill="#15803d">{t.breakEven(breakEven.toFixed(1))}</text>
+            <text x={14} y={44} fontSize={14} fill="#4d7c0f">{t.breakEvenSub}</text>
           </g>
         </g>
         );
       })()}
 
       {/* legend */}
-      <g transform={`translate(${M.left + 10}, ${M.top + 6})`}>
-        <circle cx={5} cy={0} r={4} fill={RED} />
-        <text x={15} y={4} fontSize={11.5} fill="#334155" fontWeight={600}>{t.legendWithout}</text>
-        <circle cx={5} cy={17} r={4} fill={GREEN} />
-        <text x={15} y={21} fontSize={11.5} fill="#334155" fontWeight={600}>{t.legendWith}</text>
-        <text x={15} y={34} fontSize={10.5} fill="#64748b">{t.legendWithSub(Math.round(p.savings))}</text>
+      <g transform={`translate(${M.left + 12}, ${M.top + 10})`}>
+        <circle cx={6} cy={0} r={5.5} fill={RED} />
+        <text x={20} y={5} fontSize={16} fill="#334155" fontWeight={600}>{t.legendWithout}</text>
+        <circle cx={6} cy={24} r={5.5} fill={GREEN} />
+        <text x={20} y={29} fontSize={16} fill="#334155" fontWeight={600}>{t.legendWith}</text>
+        <text x={20} y={47} fontSize={14} fill="#64748b">{t.legendWithSub(Math.round(p.savings))}</text>
       </g>
     </svg>
   );
 };
 
 const EndLabel: React.FC<{ x: number; y: number; text: string; color: string }> = ({ x, y, text, color }) => {
-  const w = text.length * 6.6 + 12;
+  const w = text.length * 9.6 + 20;
   return (
-    <g transform={`translate(${x - w / 2}, ${y - 22})`}>
-      <rect width={w} height={18} rx={5} fill={color} />
-      <text x={w / 2} y={13} fontSize={11} fontWeight={800} fill="#fff" textAnchor="middle">{text}</text>
+    <g transform={`translate(${x - w / 2}, ${y - 32})`}>
+      <rect width={w} height={28} rx={8} fill={color} />
+      <text x={w / 2} y={19} fontSize={16} fontWeight={800} fill="#fff" textAnchor="middle">{text}</text>
     </g>
   );
 };
