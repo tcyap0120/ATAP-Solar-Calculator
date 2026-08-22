@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-12T04:00:50.555Z",
+  "generatedAt": "2026-08-22T10:02:06.667Z",
   "docs": [
     {
       "id": "amcharge-ev-charger-datasheet-pdf",
@@ -7,6 +7,20 @@
       "category": "General",
       "type": "pdf",
       "file": "AmCharge EV Charger Datasheet.pdf"
+    },
+    {
+      "id": "cablelink-ac-cable-datasheet-pdf",
+      "title": "CableLink AC Cable DataSheet",
+      "category": "General",
+      "type": "pdf",
+      "file": "CableLink AC Cable DataSheet.pdf"
+    },
+    {
+      "id": "creditcard-list-for-installmentplan-jpeg",
+      "title": "CreditCard List For InstallmentPlan",
+      "category": "General",
+      "type": "image",
+      "file": "CreditCard List For InstallmentPlan.jpeg"
     },
     {
       "id": "fonrich-optimizer-datasheet-pdf",
