@@ -597,11 +597,7 @@ const App = () => {
         </div>
 
         <div className={activeTab === 'investment' ? 'block animate-in fade-in duration-300' : 'hidden'}>
-          <InvestmentCase
-            initialUsage={typeof usageKwh === 'number' ? usageKwh : 0}
-            augustPromo={augustPromo}
-            suriaHomeRebate={suriaHomeRebate}
-          />
+          <InvestmentCase />
         </div>
 
         <div className={activeTab === 'graphs' ? 'block' : 'hidden'}>

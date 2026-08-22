@@ -4,7 +4,7 @@ import {
   ShieldCheck, TrendingUp, Leaf, Zap, Home,
 } from 'lucide-react';
 import { calculateScenario } from './PlanRecommender';
-import { getKwhFromBill, deriveCc60FromCash } from '../utils/billingEngine';
+import { getKwhFromBill, calculateBill, deriveCc60FromCash } from '../utils/billingEngine';
 import { PANEL_WATTAGE, BATTERY_NOMINAL_KWH } from '../constants';
 import { captureFixedWidthElement, shareCanvas, downloadCanvas, ShareOutcome } from '../utils/shareImage';
 
@@ -198,24 +198,19 @@ const S = {
 const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
 const fmt2 = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-interface InvestmentCaseProps {
-  initialUsage: number;
-  augustPromo: boolean;
-  suriaHomeRebate: boolean;
-}
-
-export const InvestmentCase: React.FC<InvestmentCaseProps> = ({
-  initialUsage,
-  augustPromo,
-  suriaHomeRebate,
-}) => {
+export const InvestmentCase: React.FC = () => {
   const [lang, setLang] = useState<Lang>('zh');
   const [phase, setPhase] = useState<'single' | 'three'>('three');
   const [bill, setBill] = useState<number>(1000);
-  const [usageOverride, setUsageOverride] = useState<number | null>(null);
+  const [usage, setUsage] = useState<number>(() => Math.round(getKwhFromBill(1000)));
   const [daytimePercent, setDaytimePercent] = useState(30);
-  const [panels, setPanels] = useState(32);
-  const [batteries, setBatteries] = useState(3);
+  const [panels, setPanels] = useState(21);
+  const [batteries, setBatteries] = useState(2);
+
+  // Discounts are chosen here rather than inherited from the rest of the app, so a poster can be
+  // quoted with or without them without disturbing anyone else's screen.
+  const [augustPromo, setAugustPromo] = useState(true);
+  const [suriaRebate, setSuriaRebate] = useState(false);
   const [plan, setPlan] = useState<Plan>('cc36');
   const [horizon, setHorizon] = useState(20);
   const [tariffGrowth, setTariffGrowth] = useState(0);
@@ -234,10 +229,17 @@ export const InvestmentCase: React.FC<InvestmentCaseProps> = ({
   const [posterHeight, setPosterHeight] = useState(0);
   const previewWrapRef = useRef<HTMLDivElement>(null);
 
-  // Seed the bill from whatever the rest of the app is working with.
-  useEffect(() => {
-    if (initialUsage > 0) setUsageOverride(null);
-  }, [initialUsage]);
+  // Bill and usage are two views of the same number, so editing either re-derives the other.
+  // They must agree: every figure on the poster is simulated from usage but presented against the
+  // bill, and a mismatch shows up as savings + remaining not adding back to the bill.
+  const handleBillChange = (v: number) => {
+    setBill(v);
+    setUsage(Math.round(getKwhFromBill(v)));
+  };
+  const handleUsageChange = (v: number) => {
+    setUsage(v);
+    setBill(Math.round(calculateBill(v).finalTotal));
+  };
 
   useEffect(() => {
     if (!toast) return;
@@ -245,15 +247,27 @@ export const InvestmentCase: React.FC<InvestmentCaseProps> = ({
     return () => clearTimeout(t);
   }, [toast]);
 
-  // Scale the 1600px poster down to whatever room the screen has.
+  // Scale the poster down to whatever room the screen has.
+  //
+  // This has to be an observer, not a one-off measurement: the page is mounted inside a hidden
+  // container while another tab is showing, so at mount time the wrapper is 0px wide. Measuring
+  // once gave a scale of 0 and the preview stayed invisible until the window happened to be
+  // resized. Zero widths are ignored so a hidden tab never overwrites a good scale.
   useEffect(() => {
+    const el = previewWrapRef.current;
+    if (!el) return;
     const fit = () => {
-      const w = previewWrapRef.current?.clientWidth ?? POSTER_WIDTH;
-      setPreviewScale(Math.min(1, w / POSTER_WIDTH));
+      const w = el.clientWidth;
+      if (w > 0) setPreviewScale(Math.min(1, w / POSTER_WIDTH));
     };
     fit();
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', fit);
+      return () => window.removeEventListener('resize', fit);
+    }
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   // A CSS transform does not affect layout, so the scaled poster would otherwise collapse its
@@ -266,11 +280,9 @@ export const InvestmentCase: React.FC<InvestmentCaseProps> = ({
     return () => ro.disconnect();
   }, []);
 
-  const usage = usageOverride ?? Math.round(getKwhFromBill(bill));
-
   const scenario = useMemo(
-    () => calculateScenario(panels, batteries, usage, daytimePercent, phase, bill, false, augustPromo, suriaHomeRebate),
-    [panels, batteries, usage, daytimePercent, phase, bill, augustPromo, suriaHomeRebate]
+    () => calculateScenario(panels, batteries, usage, daytimePercent, phase, bill, false, augustPromo, suriaRebate),
+    [panels, batteries, usage, daytimePercent, phase, bill, augustPromo, suriaRebate]
   );
 
   const termMonths = plan === 'cc60' ? 60 : plan === 'cc36' ? 36 : 0;
@@ -285,7 +297,12 @@ export const InvestmentCase: React.FC<InvestmentCaseProps> = ({
 
   const price = priceOverride ?? autoPrice;
   const savings = savingsOverride ?? (scenario?.monthlySavings ?? 0);
-  const remainingBill = remainingOverride ?? Math.max(0, scenario?.newBillAmount ?? 0);
+
+  // The remaining bill is derived from the two numbers beside it rather than read off the
+  // simulation, so the poster's arithmetic always closes: saving + remaining = the bill shown.
+  // Taking it from the simulated new bill instead left them a ringgit or two apart, because the
+  // simulation prices the *usage* while the poster quotes the bill the customer typed.
+  const remainingBill = remainingOverride ?? Math.max(0, bill - Math.round(savings));
 
   const installmentMonthly = termMonths > 0 ? price / termMonths : 0;
   const netMonthly = savings - installmentMonthly;
@@ -442,16 +459,12 @@ export const InvestmentCase: React.FC<InvestmentCaseProps> = ({
             </div>
           </Field>
 
-          <Field label={lang === 'zh' ? '每月电费 (RM)' : 'Monthly Bill (RM)'}>
-            <NumInput value={bill} onChange={v => { setBill(v); setUsageOverride(null); }} min={0} />
+          <Field label={lang === 'zh' ? '每月电费 (RM)' : 'Monthly Bill (RM)'} synced>
+            <NumInput value={bill} onChange={handleBillChange} min={0} />
           </Field>
 
-          <Field
-            label={lang === 'zh' ? '用电量 (kWh)' : 'Usage (kWh)'}
-            auto={usageOverride === null}
-            onReset={usageOverride !== null ? () => setUsageOverride(null) : undefined}
-          >
-            <NumInput value={usage} onChange={setUsageOverride} min={0} />
+          <Field label={lang === 'zh' ? '用电量 (kWh)' : 'Usage (kWh)'} synced>
+            <NumInput value={usage} onChange={handleUsageChange} min={0} />
           </Field>
 
           <Field label={lang === 'zh' ? '白天用量 %' : 'Daytime %'}>
@@ -484,6 +497,20 @@ export const InvestmentCase: React.FC<InvestmentCaseProps> = ({
             onReset={priceOverride !== null ? () => setPriceOverride(null) : undefined}
           >
             <NumInput value={Math.round(price)} onChange={setPriceOverride} min={0} />
+            {/* Ticking a discount clears any typed-over price, otherwise the tick would appear
+                to do nothing. Type over it again afterwards to pin a negotiated figure. */}
+            <div className="mt-1.5 space-y-1">
+              <Tick2
+                checked={augustPromo}
+                onChange={v => { setAugustPromo(v); setPriceOverride(null); }}
+                label={lang === 'zh' ? '八月促销' : 'August Promo'}
+              />
+              <Tick2
+                checked={suriaRebate}
+                onChange={v => { setSuriaRebate(v); setPriceOverride(null); }}
+                label={lang === 'zh' ? 'RM3,000 回扣' : 'RM3,000 Rebate'}
+              />
+            </div>
           </Field>
 
           <Field
@@ -612,12 +639,13 @@ export const InvestmentCase: React.FC<InvestmentCaseProps> = ({
 /* Control helpers                                                     */
 /* ------------------------------------------------------------------ */
 
-const Field: React.FC<{ label: string; auto?: boolean; onReset?: () => void; children: React.ReactNode }> = ({
-  label, auto, onReset, children,
-}) => (
+const Field: React.FC<{
+  label: string; auto?: boolean; synced?: boolean; onReset?: () => void; children: React.ReactNode;
+}> = ({ label, auto, synced, onReset, children }) => (
   <div>
     <label className="flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">
       <span className="truncate">{label}</span>
+      {synced && <span className="text-slate-300 normal-case tracking-normal">synced</span>}
       {auto === true && <span className="text-blue-400 normal-case tracking-normal">auto</span>}
       {onReset && (
         <button onClick={onReset} className="text-blue-500 hover:text-blue-700" title="Reset to calculated">
@@ -627,6 +655,20 @@ const Field: React.FC<{ label: string; auto?: boolean; onReset?: () => void; chi
     </label>
     {children}
   </div>
+);
+
+const Tick2: React.FC<{ checked: boolean; onChange: (v: boolean) => void; label: string }> = ({
+  checked, onChange, label,
+}) => (
+  <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 cursor-pointer hover:text-blue-600 transition-colors">
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={e => onChange(e.target.checked)}
+      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+    />
+    {label}
+  </label>
 );
 
 const NumInput: React.FC<{
