@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-22T10:02:06.667Z",
+  "generatedAt": "2026-08-26T10:37:45.770Z",
   "docs": [
     {
       "id": "amcharge-ev-charger-datasheet-pdf",
@@ -7,6 +7,13 @@
       "category": "General",
       "type": "pdf",
       "file": "AmCharge EV Charger Datasheet.pdf"
+    },
+    {
+      "id": "bloomberg-tier-1-inverter-3q2026-pdf",
+      "title": "Bloomberg Tier 1 Inverter 3Q2026",
+      "category": "General",
+      "type": "pdf",
+      "file": "Bloomberg Tier 1 Inverter 3Q2026.pdf"
     },
     {
       "id": "cablelink-ac-cable-datasheet-pdf",
@@ -28,6 +35,265 @@
       "category": "General",
       "type": "pdf",
       "file": "Fonrich Optimizer Datasheet.pdf"
+    },
+    {
+      "id": "footages-1000262873-jpg",
+      "title": "1000262873",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/1000262873.jpg"
+    },
+    {
+      "id": "footages-1000263718-jpg",
+      "title": "1000263718",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/1000263718.jpg"
+    },
+    {
+      "id": "footages-1000325249-jpg",
+      "title": "1000325249",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/1000325249.jpg"
+    },
+    {
+      "id": "footages-1000416642-jpg",
+      "title": "1000416642",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/1000416642.jpg"
+    },
+    {
+      "id": "footages-272761-jpg",
+      "title": "272761",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/272761.jpg"
+    },
+    {
+      "id": "footages-30ffaf9b-f9dd-46bf-ab7e-f6a081e00599-jpeg",
+      "title": "30ffaf9b F9dd 46bf Ab7e F6a081e00599",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/30ffaf9b-f9dd-46bf-ab7e-f6a081e00599.jpeg"
+    },
+    {
+      "id": "footages-315841-jpg",
+      "title": "315841",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/315841.jpg"
+    },
+    {
+      "id": "footages-315871-jpg",
+      "title": "315871",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/315871.jpg"
+    },
+    {
+      "id": "footages-auto-backupbox-inside-jpg",
+      "title": "auto backupbox inside",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/auto backupbox inside.jpg"
+    },
+    {
+      "id": "footages-autobackup-box-jpg",
+      "title": "autobackup box",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/autobackup box.jpg"
+    },
+    {
+      "id": "footages-commercial-jpg",
+      "title": "Commercial",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/commercial.jpg"
+    },
+    {
+      "id": "footages-commercial1-jpg",
+      "title": "Commercial1",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/commercial1.jpg"
+    },
+    {
+      "id": "footages-f4696ba6dcc16482f7e9faa4dca6a234-exif-jpg",
+      "title": "F4696ba6dcc16482f7e9faa4dca6a234 Exif",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/f4696ba6dcc16482f7e9faa4dca6a234_exif.jpg"
+    },
+    {
+      "id": "footages-goodwe-app-png",
+      "title": "GoodWe App",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/GoodWe App.png"
+    },
+    {
+      "id": "footages-goodwe-inverter-and-battery-jpg",
+      "title": "goodwe inverter and battery",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/goodwe inverter and battery.jpg"
+    },
+    {
+      "id": "footages-image-picker-361c5efd-3cfb-4e4b-9462-357c408f629b-18357-000004cb55158276-jpg",
+      "title": "Image Picker 361C5EFD 3CFB 4E4B 9462 357C408F629B 18357 000004CB55158276",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/image_picker_361C5EFD-3CFB-4E4B-9462-357C408F629B-18357-000004CB55158276.jpg"
+    },
+    {
+      "id": "footages-image-picker-5d2ef8de-0cf5-479c-a84b-6ad3ae7e30fa-6127-000001791af6c4ee-jpg",
+      "title": "Image Picker 5D2EF8DE 0CF5 479C A84B 6AD3AE7E30FA 6127 000001791AF6C4EE",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/image_picker_5D2EF8DE-0CF5-479C-A84B-6AD3AE7E30FA-6127-000001791AF6C4EE.jpg"
+    },
+    {
+      "id": "footages-image-picker-8a71fe22-098b-4748-92ec-e1d5148bd4a2-44781-00000c152acf035b-jpg",
+      "title": "Image Picker 8A71FE22 098B 4748 92EC E1D5148BD4A2 44781 00000C152ACF035B",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/image_picker_8A71FE22-098B-4748-92EC-E1D5148BD4A2-44781-00000C152ACF035B.jpg"
+    },
+    {
+      "id": "footages-image-picker-aab0916c-adca-4d05-907c-1270871a47d8-18200-000005afaa71efcf-jpg",
+      "title": "Image Picker AAB0916C ADCA 4D05 907C 1270871A47D8 18200 000005AFAA71EFCF",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/image_picker_AAB0916C-ADCA-4D05-907C-1270871A47D8-18200-000005AFAA71EFCF.jpg"
+    },
+    {
+      "id": "footages-image-picker-ba4ce21e-f3df-4214-b4a3-e88a66877fe0-13127-0000034ca1604a67-jpg",
+      "title": "Image Picker BA4CE21E F3DF 4214 B4A3 E88A66877FE0 13127 0000034CA1604A67",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/image_picker_BA4CE21E-F3DF-4214-B4A3-E88A66877FE0-13127-0000034CA1604A67.jpg"
+    },
+    {
+      "id": "footages-image-picker-d1b18ec1-b0bd-471a-895e-f72fb78a2840-17484-00000629a16030d9-jpg",
+      "title": "Image Picker D1B18EC1 B0BD 471A 895E F72FB78A2840 17484 00000629A16030D9",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/image_picker_D1B18EC1-B0BD-471A-895E-F72FB78A2840-17484-00000629A16030D9.jpg"
+    },
+    {
+      "id": "footages-img-20251224-190306-jpg",
+      "title": "IMG 20251224 190306",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/IMG_20251224_190306.jpg"
+    },
+    {
+      "id": "footages-img-20251224-190310-jpg",
+      "title": "IMG 20251224 190310",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/IMG_20251224_190310.jpg"
+    },
+    {
+      "id": "footages-img-20251230-193906-jpg",
+      "title": "IMG 20251230 193906",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/IMG_20251230_193906.jpg"
+    },
+    {
+      "id": "footages-img-20251230-193928-jpg",
+      "title": "IMG 20251230 193928",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/IMG_20251230_193928.jpg"
+    },
+    {
+      "id": "footages-img-9431-jpg",
+      "title": "IMG 9431",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/IMG_9431.JPG"
+    },
+    {
+      "id": "footages-inverter-bottom-jpg",
+      "title": "inverter bottom",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/inverter bottom.jpg"
+    },
+    {
+      "id": "footages-l-feet-hook-jpg",
+      "title": "L feet hook",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/L feet hook.jpg"
+    },
+    {
+      "id": "footages-l-feet-png",
+      "title": "L Feet",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/L Feet.png"
+    },
+    {
+      "id": "footages-optimizer-jpg",
+      "title": "Optimizer",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/optimizer.jpg"
+    },
+    {
+      "id": "footages-panels-png",
+      "title": "Panels",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/panels.png"
+    },
+    {
+      "id": "footages-panels2-png",
+      "title": "Panels2",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/panels2.png"
+    },
+    {
+      "id": "footages-panels3-jpg",
+      "title": "Panels3",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/panels3.jpg"
+    },
+    {
+      "id": "footages-video-project-7-mp4",
+      "title": "Video Project 7",
+      "category": "Footages",
+      "type": "file",
+      "file": "Footages/Video Project 7.mp4"
+    },
+    {
+      "id": "footages-video-project-9-mp4",
+      "title": "Video Project 9",
+      "category": "Footages",
+      "type": "file",
+      "file": "Footages/Video Project 9.mp4"
+    },
+    {
+      "id": "footages-whatsapp-image-2026-08-08-at-07-28-29-jpeg",
+      "title": "WhatsApp Image 2026-08-08 at 07.28.29",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/WhatsApp Image 2026-08-08 at 07.28.29.jpeg"
+    },
+    {
+      "id": "footages-whatsapp-image-2026-08-08-at-07-29-00-jpeg",
+      "title": "WhatsApp Image 2026-08-08 at 07.29.00",
+      "category": "Footages",
+      "type": "image",
+      "file": "Footages/WhatsApp Image 2026-08-08 at 07.29.00.jpeg"
     },
     {
       "id": "goodwe-3p-inverter-datasheet-pdf",
