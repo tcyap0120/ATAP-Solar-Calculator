@@ -176,7 +176,7 @@ const CommercialResiPage: React.FC = () => {
     //    < 26 kWp   : follow residential calculator price (Ref Rates), no discount.
     //    26–30 kWp  : RM1,975 / kWp (hybrid inverter).
     //    ≥ 30 kWp   : RM1,800 / kWp (30–100 hybrid rate, reused for 100+ hybrid systems).
-    const unitPrice = settings.battery?.pricePerUnit ?? 8200;
+    const unitPrice = settings.battery?.pricePerUnit ?? 7400;
     const batteryCostCash = bQty * unitPrice;
     const batteryCostCC = bQty * Math.round(unitPrice * 1.093);
 

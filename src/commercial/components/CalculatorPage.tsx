@@ -528,7 +528,7 @@ const CalculatorPage: React.FC = () => {
         }
 
         if (battCount > 0 && settings.battery) {
-            cost += battCount * (settings.battery.pricePerUnit ?? 8200);
+            cost += battCount * (settings.battery.pricePerUnit ?? 7400);
         }
 
         return {
@@ -596,7 +596,7 @@ const CalculatorPage: React.FC = () => {
     const planB = calcPlanDetails(finalPanelsB * settings.panelRating);
 
     // PLAN C: BESS COVERAGE
-    const battSettings = settings.battery || { capacityKwh: 16, usableRatio: 0.9, pricePerUnit: 8200, maxCount: 4 };
+    const battSettings = settings.battery || { capacityKwh: 16, usableRatio: 0.9, pricePerUnit: 7400, maxCount: 4 };
     const effectiveBattCap = battSettings.capacityKwh * battSettings.usableRatio; 
     const maxStorable = effectiveBattCap * battSettings.maxCount;
     
@@ -883,7 +883,7 @@ const CalculatorPage: React.FC = () => {
     let battTotalCap = 0;
     if (batteryCount > 0 && settings.battery) {
         battTotalCap = batteryCount * settings.battery.capacityKwh;
-        battCost = batteryCount * (settings.battery.pricePerUnit ?? 8200);
+        battCost = batteryCount * (settings.battery.pricePerUnit ?? 7400);
         price += battCost;
     }
 

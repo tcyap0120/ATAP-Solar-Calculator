@@ -82,6 +82,10 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       if (savedSchema < 5) {
         merged.referencePrices = commercialReferencePricesFromResidential();
       }
+      if (savedSchema < 6) {
+        // Battery unit price repriced to RM7,400 — override the stale saved value.
+        merged.battery = { ...merged.battery, pricePerUnit: DEFAULT_SETTINGS.battery.pricePerUnit };
+      }
       merged._settingsSchemaVersion = COMMERCIAL_SETTINGS_SCHEMA_VERSION;
     }
     return sanitizeCommercialReferencePrices(merged);

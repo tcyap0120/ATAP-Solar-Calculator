@@ -3,7 +3,7 @@ import { SYSTEM_PRICING, MANUAL_BACKUP_BOX_THREE_PHASE_RM } from '../constants';
 import { deriveCcFromCash } from '../utils/billingEngine';
 
 /** Bump when saved GlobalSettings need a one-time migration (e.g. brand automation defaults). */
-export const COMMERCIAL_SETTINGS_SCHEMA_VERSION = 5;
+export const COMMERCIAL_SETTINGS_SCHEMA_VERSION = 6;
 
 /** Bump when default meter caps (e.g. max inverter per type) should replace saved meters. */
 export const COMMERCIAL_METERS_SCHEMA_VERSION = 1;
@@ -100,7 +100,7 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
   battery: {
     capacityKwh: 16,
     usableRatio: 0.9,
-    pricePerUnit: 8200,
+    pricePerUnit: 7400,
     maxCount: 4
   },
   financing: {

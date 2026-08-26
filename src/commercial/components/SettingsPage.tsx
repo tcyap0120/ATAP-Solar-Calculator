@@ -922,7 +922,7 @@ const SettingsPage: React.FC = () => {
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2 group-focus-within:text-emerald-500 transition-colors">Price per Battery Unit (RM)</label>
                         <input 
                             type="number" step="1"
-                            value={localSettings.battery?.pricePerUnit ?? 8200}
+                            value={localSettings.battery?.pricePerUnit ?? 7400}
                             onChange={e => updateBattery('pricePerUnit', e.target.value)}
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-semibold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                         />
