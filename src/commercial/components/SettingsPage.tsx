@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useAppContext } from '../CommercialSolarShell';
 import { PricingTier } from '../types';
 import { Save, Plus, Trash2, RefreshCcw, Table2, Cog, ScrollText, Wrench, Battery, Banknote } from 'lucide-react';
-import { COMMERCIAL_SETTINGS_SCHEMA_VERSION, DEFAULT_BRANDS, DEFAULT_METERS, DEFAULT_SETTINGS } from '../constants';
+import { COMMERCIAL_PANEL_RATING_KWP, COMMERCIAL_SETTINGS_SCHEMA_VERSION, DEFAULT_BRANDS, DEFAULT_METERS, DEFAULT_SETTINGS } from '../constants';
 import { maxPanelsForMeter } from '../utils/meterHelpers';
 
 const SettingsPage: React.FC = () => {
@@ -236,6 +236,9 @@ const SettingsPage: React.FC = () => {
                         onChange={e => setLocalSettings({...localSettings, panelRating: parseFloat(e.target.value)})}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-semibold focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all"
                     />
+                    <p className="text-[10px] text-slate-400 mt-1.5">
+                        {Math.round((localSettings.panelRating || 0) * 1000)}W per panel · residential uses {Math.round(COMMERCIAL_PANEL_RATING_KWP * 1000)}W
+                    </p>
                 </div>
                 <div className="group">
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2 group-focus-within:text-amber-500 transition-colors">Avg Sun Hours</label>

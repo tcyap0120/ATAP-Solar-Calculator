@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { QuotationDraft } from '../types';
+import { COMMERCIAL_PANEL_RATING_KWP } from '../constants';
 import { generateDocument, inspectDocument, loadDefaultTemplate, createFilledDocBlob, renderDocxToElement } from '../services/docService';
 import { useAppContext } from '../CommercialSolarShell';
 import { FileText, Upload, Zap, User, MapPin, Tag, Download, CheckCircle2, AlertTriangle, FileUp, Info, Printer, Eye, ArrowRight } from 'lucide-react';
@@ -80,7 +81,7 @@ const QuotationPage: React.FC = () => {
     const { name, value } = e.target;
     
     // Auto-Sync Logic
-    const rating = settings.panelRating || 0.65;
+    const rating = settings.panelRating || COMMERCIAL_PANEL_RATING_KWP;
     
     updateQuotationDraft(prev => {
         let updates: any = { [name]: name === 'systemprice' ? parseFloat(value) || 0 : value };

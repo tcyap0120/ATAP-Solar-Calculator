@@ -1,5 +1,5 @@
 import { InverterBrand, MeterType, GlobalSettings, CalculatorSession, ReferencePrice } from './types';
-import { SYSTEM_PRICING, MANUAL_BACKUP_BOX_THREE_PHASE_RM } from '../constants';
+import { PANEL_WATTAGE, SYSTEM_PRICING, MANUAL_BACKUP_BOX_THREE_PHASE_RM } from '../constants';
 import { deriveCcFromCash } from '../utils/billingEngine';
 
 /** Bump when saved GlobalSettings need a one-time migration (e.g. brand automation defaults). */
@@ -24,6 +24,9 @@ export function commercialReferencePricesFromResidential(): ReferencePrice[] {
   });
 }
 
+/** kWp per panel, derived from the residential sheet so both calculators stay on one wattage. */
+export const COMMERCIAL_PANEL_RATING_KWP = PANEL_WATTAGE / 1000;
+
 export const DEFAULT_SESSION: CalculatorSession = {
   selectedMeterId: 'three_phase',
   selectedBrandId: '',
@@ -46,7 +49,7 @@ export const DEFAULT_SESSION: CalculatorSession = {
 };
 
 export const DEFAULT_SETTINGS: GlobalSettings = {
-  panelRating: 0.65,
+  panelRating: COMMERCIAL_PANEL_RATING_KWP,
   sunHours: 3.4,
   tariffRate: 0.5068,
   kwtbb: 0.016,

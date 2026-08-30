@@ -85,6 +85,8 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       if (savedSchema < 6) {
         // Battery unit price repriced to RM7,400 — override the stale saved value.
         merged.battery = { ...merged.battery, pricePerUnit: DEFAULT_SETTINGS.battery.pricePerUnit };
+        // Panel wattage now follows residential (650W); drop any drifted saved rating.
+        merged.panelRating = DEFAULT_SETTINGS.panelRating;
       }
       merged._settingsSchemaVersion = COMMERCIAL_SETTINGS_SCHEMA_VERSION;
     }
