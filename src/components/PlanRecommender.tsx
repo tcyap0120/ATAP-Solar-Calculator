@@ -488,6 +488,11 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
     }
 
 
+    // 0% CC prices are billed over 36 months. Round the monthly UP to the sen so the 36
+    // payments always cover the price (1138.8544 -> 1138.86).
+    const monthlyInstallment = (total: number) =>
+      (Math.ceil((total / 36) * 100) / 100).toFixed(2);
+
     plansToInclude.forEach((plan, index) => {
       // Extra blank line between plans. Prepended rather than appended so the gap before the
       // "package includes" footer stays as it was.
@@ -535,6 +540,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
         msg += `📌每月预计节省电费：约 RM${roundedMonthlySavings}+-\n`;
         msg += `📌每年预计节省电费：约 RM${roundedAnnualSavings}+-\n`;
         msg += `📌限时优惠价：RM${ccBeforeRebate.toLocaleString()}（可零利息分期付款36个月）\n`;
+        msg += `- 每月供付 RM${monthlyInstallment(ccBeforeRebate)}\n`;
         msg += `📌现金优惠价：RM${cashBeforeRebate.toLocaleString()}\n`;
         if (suriaHomeRebate) {
           msg += `\n🎉RM${suriaRebateAmt.toLocaleString()}津贴后价格: *RM${r.systemCostCC.toLocaleString()}*\n`;
@@ -545,6 +551,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
         msg += `📌Est. Monthly Savings: ~RM${roundedMonthlySavings}+-\n`;
         msg += `📌Est. Annual Savings: ~RM${roundedAnnualSavings}+-\n`;
         msg += `📌Promo Price: RM${ccBeforeRebate.toLocaleString()} (0% Interest / 36m)\n`;
+        msg += `- Monthly Installment RM${monthlyInstallment(ccBeforeRebate)}\n`;
         msg += `📌Cash Price: RM${cashBeforeRebate.toLocaleString()}\n`;
         if (suriaHomeRebate) {
           msg += `\n🎉After RM${suriaRebateAmt.toLocaleString()} Rebate (CC): *RM${r.systemCostCC.toLocaleString()}*\n`;
