@@ -507,7 +507,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       // not part of the percentage the CC price is derived through.
       const rebateInCash = r.suriaRebate ?? 0;
       const listPriceCCBeforePromo = augustPromo
-        ? deriveCcFromCash(r.systemCostCash + rebateInCash + getAugustPromoDiscount(r.batteries)) - rebateInCash
+        ? deriveCcFromCash(r.systemCostCash + rebateInCash + getAugustPromoDiscount(r.batteries, phase)) - rebateInCash
         : 0;
 
       const batteryTotalKwhNominal = r.batteries * BATTERY_NOMINAL_KWH;

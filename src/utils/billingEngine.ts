@@ -17,7 +17,8 @@ import {
   MANUAL_BACKUP_BOX_SINGLE_PHASE_RM,
   MANUAL_BACKUP_BOX_THREE_PHASE_RM,
   AUGUST_PROMO_SYSTEM_DISCOUNT,
-  AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT,
+  AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT_SINGLE,
+  AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT_THREE,
   AUGUST_PROMO_BATTERY_UNIT_DISCOUNT,
   THREE_PHASE_INVERTER_UPGRADE_5_TO_8KW_RM,
   THREE_PHASE_INVERTER_UPGRADE_8_TO_10KW_RM,
@@ -291,11 +292,19 @@ export const CC_60M_DIVISOR = 0.9;
 export const deriveCc60FromCash = (cash: number): number =>
   Math.ceil(cash / CC_60M_DIVISOR / 10) * 10;
 
-/** System-level RM discount when the August Promo is active. */
-export const getAugustPromoSystemDiscount = (batteries: number): number =>
-  batteries >= 1
-    ? AUGUST_PROMO_SYSTEM_DISCOUNT
-    : AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT;
+/**
+ * System-level RM discount when the August Promo is active. With a battery both phases get the
+ * same amount; with no battery single phase gets more than three phase.
+ */
+export const getAugustPromoSystemDiscount = (
+  batteries: number,
+  phase: 'single' | 'three' = 'single'
+): number => {
+  if (batteries >= 1) return AUGUST_PROMO_SYSTEM_DISCOUNT;
+  return phase === 'single'
+    ? AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT_SINGLE
+    : AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT_THREE;
+};
 
 /** Per-battery RM discount when the August Promo is active. */
 export const getAugustPromoBatteryDiscount = (batteries: number): number =>
@@ -305,8 +314,10 @@ export const getAugustPromoBatteryDiscount = (batteries: number): number =>
  * Total August Promo discount. Like every other discount it comes off cash, and the CC price is
  * then derived from the reduced cash — so CC always stays at cash / 0.925.
  */
-export const getAugustPromoDiscount = (batteries: number): number =>
-  getAugustPromoSystemDiscount(batteries) + getAugustPromoBatteryDiscount(batteries);
+export const getAugustPromoDiscount = (
+  batteries: number,
+  phase: 'single' | 'three' = 'single'
+): number => getAugustPromoSystemDiscount(batteries, phase) + getAugustPromoBatteryDiscount(batteries);
 
 /**
  * Lookup system cost based on panel count and battery count.
@@ -444,7 +455,7 @@ export const calculateSystemCost = (
   let augustPromoSystemDiscount = 0;
   let augustPromoBatteryDiscount = 0;
   if (options?.augustPromo) {
-    augustPromoSystemDiscount = getAugustPromoSystemDiscount(batteries);
+    augustPromoSystemDiscount = getAugustPromoSystemDiscount(batteries, phase);
     augustPromoBatteryDiscount = getAugustPromoBatteryDiscount(batteries);
     cash -= augustPromoSystemDiscount + augustPromoBatteryDiscount;
   }

@@ -59,19 +59,21 @@ export const MANUAL_BACKUP_BOX_THREE_PHASE_RM = 2500;
 /** Three-phase inverter auto-upgrade costs (added to both cash & CC). */
 export const THREE_PHASE_INVERTER_UPGRADE_5_TO_8KW_RM = 500;   // panels 11–14
 export const THREE_PHASE_INVERTER_UPGRADE_8_TO_10KW_RM = 300;  // panels 18–21
-export const THREE_PHASE_INVERTER_UPGRADE_10_TO_12KW_RM = 600; // panels 22–26
-export const THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM = 800; // panels 27–32
+export const THREE_PHASE_INVERTER_UPGRADE_10_TO_12KW_RM = 400; // panels 22–26
+export const THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM = 600; // panels 27–32
 export const THREE_PHASE_INVERTER_UPGRADE_20_TO_25KW_RM = 5000; // panels 50–60
 
 /**
  * August Promo. Every discount here comes off the cash price, and the CC price is then derived
- * from the reduced cash, so CC always stays at cash / 0.925. Amounts are the same for single and
- * three phase.
+ * from the reduced cash, so CC always stays at cash / 0.925. The with-battery amount is the same
+ * for single and three phase; the no-battery amount differs by phase.
  */
-/** With 1+ batteries: system discount. */
+/** With 1+ batteries: system discount, both phases. */
 export const AUGUST_PROMO_SYSTEM_DISCOUNT = 2200;
-/** With 0 batteries: lower system discount. */
-export const AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT = 800;
+/** With 0 batteries: lower system discount, single phase. */
+export const AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT_SINGLE = 1200;
+/** With 0 batteries: lower system discount, three phase. */
+export const AUGUST_PROMO_SYSTEM_DISCOUNT_ZERO_BAT_THREE = 800;
 /** Per-battery discount. */
 export const AUGUST_PROMO_BATTERY_UNIT_DISCOUNT = 1200;
 
