@@ -578,7 +578,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       msg += `✅ 10年 GoodWe 全球Tier 1电池保修\n`;
       msg += `✅ 15年 Trina Solar 全球Tier 1太阳能电板保修\n`;
       msg += `✅ 30年 电板发电效能保证\n`;
-      msg += `✅ 3年 安装与人工保修\n`;
+      msg += `✅ 3年 运营与维护保修\n`;
       msg += `✅ 1年 屋顶漏水保家`;
     } else {
       msg += `💼 *【 Package Includes 】*\n`;
@@ -589,7 +589,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       msg += `✅ 10-Year Battery Warranty (GoodWe - Global Tier 1)\n`;
       msg += `✅ 15-Year Solar Panel Warranty (Trina Solar - Global Tier 1)\n`;
       msg += `✅ 30-Year Linear Power Output Warranty\n`;
-      msg += `✅ 3-Year Workmanship & Installation Warranty\n`;
+      msg += `✅ 3-Year O&M Warranty\n`;
       msg += `✅ 1-Year Water Leakage Warranty`;
     }
 
