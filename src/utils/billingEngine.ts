@@ -24,6 +24,7 @@ import {
   THREE_PHASE_INVERTER_UPGRADE_8_TO_10KW_RM,
   THREE_PHASE_INVERTER_UPGRADE_10_TO_12KW_RM,
   THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM,
+  THREE_PHASE_INVERTER_UPGRADE_15_TO_20KW_RM,
   THREE_PHASE_INVERTER_UPGRADE_20_TO_25KW_RM
 } from '../constants';
 import { BillBreakdown, SimulationResult, PricingTier } from '../types';
@@ -379,6 +380,7 @@ export const calculateSystemCost = (
   const limit8kW = hasBattery ? 13.64 : 10.54;
   const limit10kW = hasBattery ? 16.74 : 13.64;
   const limit12kW = hasBattery ? 19.84 : 16.12;
+  const limit15kW = hasBattery ? 24.80 : 20.46;
 
   if (!options?.skipInverterUpgrade) {
     if (phase === 'single') {
@@ -386,19 +388,32 @@ export const calculateSystemCost = (
     } else if (!hasExplicitThreePhase) {
       // Three Phase Cascading Logic (tiers 41+ without explicit three-phase sheet pricing)
 
+      // These step costs are the same sheet steps the explicit-tier branch below
+      // charges, so they read from the same constants. They used to be written
+      // here as literals — 300 / 600 / 800 against the constants' 250 / 400 / 600
+      // — which made the price of an upgrade depend on which branch happened to
+      // apply it rather than on what the step costs.
       if (inverterSize.includes("8 kWac") && systemKwp > limit8kW) {
         inverterSize = "10 kWac Three Phase";
-        upgradeCost += 300;
+        upgradeCost += THREE_PHASE_INVERTER_UPGRADE_8_TO_10KW_RM;
         isUpgraded = true;
       }
       if (inverterSize.includes("10 kWac") && systemKwp > limit10kW) {
         inverterSize = "12 kWac Three Phase";
-        upgradeCost += 600;
+        upgradeCost += THREE_PHASE_INVERTER_UPGRADE_10_TO_12KW_RM;
         isUpgraded = true;
       }
       if (inverterSize.includes("12 kWac") && systemKwp > limit12kW) {
         inverterSize = "15 kWac Three Phase";
-        upgradeCost += 800;
+        upgradeCost += THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM;
+        isUpgraded = true;
+      }
+      // Completes the ladder the limits table above already documented: a 15 kWac
+      // line existed there with nothing reading it, so a cascade that reached
+      // 15 kWac stopped one step short of the array it was sized for.
+      if (inverterSize.includes("15 kWac") && systemKwp > limit15kW) {
+        inverterSize = "20 kWac Three Phase";
+        upgradeCost += THREE_PHASE_INVERTER_UPGRADE_15_TO_20KW_RM;
         isUpgraded = true;
       }
 

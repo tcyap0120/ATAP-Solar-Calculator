@@ -58,9 +58,10 @@ export const MANUAL_BACKUP_BOX_THREE_PHASE_RM = 2500;
 
 /** Three-phase inverter auto-upgrade costs (added to both cash & CC). */
 export const THREE_PHASE_INVERTER_UPGRADE_5_TO_8KW_RM = 200;   // panels 11–14
-export const THREE_PHASE_INVERTER_UPGRADE_8_TO_10KW_RM = 300;  // panels 18–21
+export const THREE_PHASE_INVERTER_UPGRADE_8_TO_10KW_RM = 250;  // panels 18–21
 export const THREE_PHASE_INVERTER_UPGRADE_10_TO_12KW_RM = 400; // panels 22–26
 export const THREE_PHASE_INVERTER_UPGRADE_12_TO_15KW_RM = 600; // panels 27–32
+export const THREE_PHASE_INVERTER_UPGRADE_15_TO_20KW_RM = 500; // cascade only — no sheet tier ships 15 kWac into it
 export const THREE_PHASE_INVERTER_UPGRADE_20_TO_25KW_RM = 5000; // panels 50–60
 
 /**
