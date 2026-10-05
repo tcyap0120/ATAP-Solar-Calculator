@@ -7,12 +7,16 @@ export const RATE_ABOVE_1500 = 0.5443; // RM per kWh
 export const THRESHOLD_RATE_CHANGE = 1500;
 
 export const RETAIL_CHARGE = 10.00; // RM
-export const RETAIL_CHARGE_THRESHOLD = 600; // kWh
+export const RETAIL_CHARGE_THRESHOLD = 800; // kWh
 
 export const TAX_RATE = 0.08; // 8%
-export const TAX_THRESHOLD = 600; // kWh
+export const TAX_THRESHOLD = 800; // kWh
 
 export const KWTBB_RATE = 0.016; // 1.6%
+
+// Automated Fuel Adjustment: charged on total import, waived entirely at or below the threshold.
+export const AFA_RATE = 0.03; // RM per kWh (3 sen)
+export const AFA_WAIVER_THRESHOLD = 800; // kWh
 
 // Solar Constants
 export const PANEL_WATTAGE = 650; // Watts per panel (0.65 kWp)

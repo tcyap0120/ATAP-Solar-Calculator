@@ -571,7 +571,7 @@ const App = () => {
                 </div>
                 <div>
                   <p className="mb-2">
-                    <strong>Tariff Note:</strong> Tariff is calculated as a flat rate: RM0.4443/kWh for usage ≤1500 kWh, and RM0.5443/kWh for usage &gt;1500 kWh. Service Tax (8%) is applied only to the cost portion exceeding 600 kWh usage.
+                    <strong>Tariff Note:</strong> Tariff is calculated as a flat rate: RM0.4443/kWh for usage ≤1500 kWh, and RM0.5443/kWh for usage &gt;1500 kWh. Service Tax (8%) is applied only to the cost portion exceeding 800 kWh usage.
                   </p>
                   <ul className="list-disc list-outside pl-4 space-y-1 text-xs opacity-90">
                     <li>Solar generation calculated based on <strong>3.5 peak sun hours</strong>/day.</li>

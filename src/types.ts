@@ -16,6 +16,7 @@ export interface BillBreakdown {
   discount: number;
   serviceTax: number;
   kwtbb: number; // Renewable Energy Fund
+  afa: number; // Automated Fuel Adjustment (0 when excluded or waived)
   exportCredit?: number; // Credit from solar export
   exportUnits?: number; // Units exported
   eeIncentiveAdjustment?: number; // Adjustment/Clawback for export

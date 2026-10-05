@@ -1,15 +1,50 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { simulateSolar, getKwhFromBill, calculateSystemCost, calculateBill, getAugustPromoDiscount, deriveCcFromCash, deriveCc60FromCash } from '../utils/billingEngine';
+import { simulateSolar, getKwhFromBill, calculateSystemCost, calculateBill, getAugustPromoDiscount, deriveCcFromCash, deriveCc60FromCash, BillOptions } from '../utils/billingEngine';
 import { InputNumber } from './InputNumber';
 import { InputSlider } from './InputSlider';
-import { SYSTEM_PRICING, BATTERY_CAPACITY_KWH, BATTERY_NOMINAL_KWH, PEAK_SUN_HOURS, PANEL_WATTAGE, AUTO_BACKUP_BOX_UPGRADE_SINGLE_PHASE_RM, AUTO_BACKUP_BOX_UPGRADE_THREE_PHASE_RM, THREE_PHASE_NO_BATTERY_MAX_PANELS } from '../constants';
-import { Zap, Sun, DollarSign, Home, Check, Battery, Info, BarChart3, PiggyBank, Target, PenTool, ShieldCheck, Compass, ChevronDown, ChevronUp, TrendingUp, AlertTriangle, RefreshCw, MessageCircle, Copy, X, Plus, Minus, Table2, Download, Globe, User, Phone, ArrowUpCircle, CheckCircle2, Share2, Loader2 } from 'lucide-react';
+import { SYSTEM_PRICING, BATTERY_CAPACITY_KWH, BATTERY_NOMINAL_KWH, PEAK_SUN_HOURS, PANEL_WATTAGE, AUTO_BACKUP_BOX_UPGRADE_SINGLE_PHASE_RM, AUTO_BACKUP_BOX_UPGRADE_THREE_PHASE_RM, THREE_PHASE_NO_BATTERY_MAX_PANELS, AFA_RATE, AFA_WAIVER_THRESHOLD } from '../constants';
+import { Zap, Sun, DollarSign, Home, Check, Battery, Info, BarChart3, PiggyBank, Target, PenTool, ShieldCheck, Compass, ChevronDown, ChevronUp, TrendingUp, AlertTriangle, RefreshCw, MessageCircle, Copy, X, Plus, Minus, Table2, Download, Globe, User, Phone, ArrowUpCircle, CheckCircle2, Share2, Loader2, Settings } from 'lucide-react';
 import { RecommendationResult } from '../types';
 import html2canvas from 'html2canvas';
 
 /** Promo deadline shown in the WhatsApp message. Stored as YYYY-MM-DD, persisted per browser. */
 const PROMO_DEADLINE_KEY = 'solar_promoDeadline';
+
+// Agent-adjustable calculation settings for this page, remembered across sessions.
+const RECOMMENDER_SETTINGS_KEY = 'solar_recommenderSettings';
+
+export interface RecommenderSettings {
+  /** kWh above which retail charge, service tax and AFA apply. */
+  thresholdKwh: number;
+  /** AFA in RM per kWh. */
+  afaRate: number;
+  /** Panel rating in watts. */
+  panelWattage: number;
+}
+
+const DEFAULT_RECOMMENDER_SETTINGS: RecommenderSettings = {
+  thresholdKwh: AFA_WAIVER_THRESHOLD,
+  afaRate: AFA_RATE,
+  panelWattage: PANEL_WATTAGE
+};
+
+const loadRecommenderSettings = (): RecommenderSettings => {
+  try {
+    const raw = localStorage.getItem(RECOMMENDER_SETTINGS_KEY);
+    if (!raw) return DEFAULT_RECOMMENDER_SETTINGS;
+    const saved = JSON.parse(raw);
+    const pick = (v: unknown, fallback: number) =>
+      typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : fallback;
+    return {
+      thresholdKwh: pick(saved?.thresholdKwh, DEFAULT_RECOMMENDER_SETTINGS.thresholdKwh),
+      afaRate: pick(saved?.afaRate, DEFAULT_RECOMMENDER_SETTINGS.afaRate),
+      panelWattage: pick(saved?.panelWattage, DEFAULT_RECOMMENDER_SETTINGS.panelWattage)
+    };
+  } catch {
+    return DEFAULT_RECOMMENDER_SETTINGS;
+  }
+};
 const DEFAULT_PROMO_DEADLINE = '2026-08-31';
 
 const MONTHS_EN = [
@@ -55,20 +90,22 @@ export const calculateScenario = (
   gapWarning: boolean,
   augustPromo: boolean,
   suriaHomeRebate: boolean = false,
-  skipInverterUpgrade: boolean = false
+  skipInverterUpgrade: boolean = false,
+  billOptions: BillOptions = {}
 ): RecommendationResult | null => {
   const effectiveUsage = typeof usageKwh === 'number' ? usageKwh : 0;
 
   // If inside gap warning, use the upper bound bill for percentage calculation to avoid skewed data
   const effectiveBill = gapWarning
-    ? calculateBill(1501).finalTotal
+    ? calculateBill(1501, 0, billOptions).finalTotal
     : (typeof billAmount === 'number' ? billAmount : 0);
 
-  const sim = simulateSolar(effectiveUsage, daytimePercent, p, b);
+  const sim = simulateSolar(effectiveUsage, daytimePercent, p, b, billOptions);
   const costs = calculateSystemCost(p, b, phase, {
     augustPromo,
     suriaHomeRebate,
-    skipInverterUpgrade
+    skipInverterUpgrade,
+    panelWattage: billOptions.panelWattage
   });
 
   if (!costs) return null;
@@ -126,10 +163,17 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
   // FIX: Initialize billAmount immediately based on usageKwh
   const [billAmount, setBillAmount] = useState<number | ''>(() => {
     const val = typeof initialUsage === 'number' ? initialUsage : 0;
-    return parseFloat(calculateBill(val).finalTotal.toFixed(2));
+    return parseFloat(calculateBill(val, 0, loadRecommenderSettings()).finalTotal.toFixed(2));
   });
 
   const [phase, setPhase] = useState<'single' | 'three'>('single');
+  // Automated Fuel Adjustment: excluded unless the agent ticks it.
+  const [includeAfa, setIncludeAfa] = useState(false);
+  const [settings, setSettings] = useState<RecommenderSettings>(loadRecommenderSettings);
+  const [showSettings, setShowSettings] = useState(false);
+  const panelWattage = settings.panelWattage;
+  // Every bill / simulation on this page is priced with these options.
+  const billOptions = useMemo<BillOptions>(() => ({ includeAfa, ...settings }), [includeAfa, settings]);
   const [daytimePercent, setDaytimePercent] = useState<number>(30);
   const [roofMaxPanels, setRoofMaxPanels] = useState<number | ''>('');
   const [isSyncing, setIsSyncing] = useState(false);
@@ -157,8 +201,8 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
   const [showComparison, setShowComparison] = useState(false);
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
 
-  const billGapLower = useMemo(() => calculateBill(1500).finalTotal, []);
-  const billGapUpper = useMemo(() => calculateBill(1501).finalTotal, []);
+  const billGapLower = useMemo(() => calculateBill(1500, 0, billOptions).finalTotal, [billOptions]);
+  const billGapUpper = useMemo(() => calculateBill(1501, 0, billOptions).finalTotal, [billOptions]);
 
   // Sync Logic
   const handleUsageChange = (val: number | '') => {
@@ -166,7 +210,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
     setGapWarning(false);
     if (!isSyncing && typeof val === 'number') {
       setIsSyncing(true);
-      const bill = calculateBill(val).finalTotal;
+      const bill = calculateBill(val, 0, billOptions).finalTotal;
       setBillAmount(parseFloat(bill.toFixed(2)));
       setIsSyncing(false);
     } else if (val === '') {
@@ -186,13 +230,36 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       setGapWarning(false);
       if (!isSyncing && typeof val === 'number') {
         setIsSyncing(true);
-        const kwh = getKwhFromBill(val);
+        const kwh = getKwhFromBill(val, billOptions);
         setUsageKwh(kwh);
         setIsSyncing(false);
       } else if (val === '') {
         setUsageKwh('');
       }
     }
+  };
+
+  // Changing AFA or the settings keeps the usage (kWh) fixed and re-prices the current bill around it.
+  const repriceBill = (options: BillOptions) => {
+    if (!gapWarning && typeof usageKwh === 'number') {
+      setBillAmount(parseFloat(calculateBill(usageKwh, 0, options).finalTotal.toFixed(2)));
+    }
+  };
+
+  const handleIncludeAfaChange = (checked: boolean) => {
+    setIncludeAfa(checked);
+    repriceBill({ ...billOptions, includeAfa: checked });
+  };
+
+  const handleSaveSettings = (next: RecommenderSettings) => {
+    setSettings(next);
+    try {
+      localStorage.setItem(RECOMMENDER_SETTINGS_KEY, JSON.stringify(next));
+    } catch {
+      // Storage unavailable (private mode etc.): settings still apply for this session.
+    }
+    repriceBill({ includeAfa, ...next });
+    setShowSettings(false);
   };
 
   const fixBillAmount = () => {
@@ -232,7 +299,9 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
           typeof billAmount === 'number' ? billAmount : 0,
           gapWarning,
           augustPromo,
-          suriaHomeRebate
+          suriaHomeRebate,
+          false,
+          billOptions
         );
 
         if (!result) continue;
@@ -270,7 +339,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
     const highOffset = sortedByCostHighOffset.length > 0 ? sortedByCostHighOffset[0] : null;
 
     // 4. Match kWh (Balanced)
-    const kwPerPanel = PANEL_WATTAGE / 1000;
+    const kwPerPanel = panelWattage / 1000;
     const targetPanels = effectiveUsage / 30 / PEAK_SUN_HOURS / kwPerPanel;
     const nightUsageDaily = (effectiveUsage * (1 - daytimePercent / 100)) / 30;
     const targetBatteries = nightUsageDaily / BATTERY_CAPACITY_KWH;
@@ -328,7 +397,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
 
     return { lowestBreakeven, mediumOffset, highOffset, matchKwh, maxSaving, batteryPlans };
 
-  }, [usageKwh, phase, daytimePercent, roofMaxPanels, billAmount, gapWarning, augustPromo, suriaHomeRebate]);
+  }, [usageKwh, phase, daytimePercent, roofMaxPanels, billAmount, gapWarning, augustPromo, suriaHomeRebate, billOptions, panelWattage]);
 
   // Handle plan updates from cards
   const handleUpdatePlan = useCallback((id: string, newResult: RecommendationResult) => {
@@ -349,9 +418,11 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       typeof billAmount === 'number' ? billAmount : 0,
       gapWarning,
       augustPromo,
-      suriaHomeRebate
+      suriaHomeRebate,
+      false,
+      billOptions
     );
-  }, [manualPanels, manualBatteries, usageKwh, phase, daytimePercent, billAmount, gapWarning, augustPromo, suriaHomeRebate]);
+  }, [manualPanels, manualBatteries, usageKwh, phase, daytimePercent, billAmount, gapWarning, augustPromo, suriaHomeRebate, billOptions]);
 
 
   // Filter selections based on current mode
@@ -501,7 +572,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
       const r = plan.data;
       const roundedMonthlySavings = Math.floor(r.monthlySavings / 10) * 10;
       const roundedAnnualSavings = roundedMonthlySavings * 12;
-      const kwpNum = (r.panels * PANEL_WATTAGE) / 1000;
+      const kwpNum = (r.panels * panelWattage) / 1000;
       const kwp = kwpNum.toFixed(2);
       // Peel the flat SuRIA rebate back out before re-deriving, then re-apply it: the rebate is
       // not part of the percentage the CC price is derived through.
@@ -594,7 +665,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
     }
 
     return msg;
-  }, [recommendations, manualResult, currentModeSelectedPlans, getActivePlanData, billAmount, usageKwh, daytimePercent, phase, roofMaxPanels, selectionRule, augustPromo, suriaHomeRebate, promoDeadline]);
+  }, [recommendations, manualResult, currentModeSelectedPlans, getActivePlanData, billAmount, usageKwh, daytimePercent, phase, roofMaxPanels, selectionRule, augustPromo, suriaHomeRebate, promoDeadline, panelWattage]);
 
   // Keep WhatsApp message in sync: if settings change while the modal is open, regenerate.
   useEffect(() => {
@@ -746,6 +817,14 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
             <Home className="text-blue-600" size={24} />
             Your Profile
           </h2>
+          <button
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors"
+            title={language === 'zh' ? '计算设置' : 'Calculation settings'}
+          >
+            <Settings size={16} />
+            <span className="hidden sm:inline">{language === 'zh' ? '设置' : 'Settings'}</span>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -890,6 +969,23 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
               </span>
             </span>
           </label>
+
+          <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-900">
+            <input
+              type="checkbox"
+              checked={includeAfa}
+              onChange={e => handleIncludeAfaChange(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-400 text-slate-700 focus:ring-slate-500"
+            />
+            <span>
+              <span className="font-bold">{language === 'zh' ? '包含 AFA 燃料附加费' : 'Include AFA'}</span>
+              <span className="block text-xs text-slate-600 mt-0.5">
+                {language === 'zh'
+                  ? `自动燃料调整费 (AFA)：每度 ${+(settings.afaRate * 100).toFixed(2)} 仙，按总用电量计算；用电 ${settings.thresholdKwh}kWh 或以下豁免。装太阳能后按新用电量重新计算。`
+                  : `Automated Fuel Adjustment: ${+(settings.afaRate * 100).toFixed(2)} sen/kWh on total import, waived at ${settings.thresholdKwh} kWh or below. Re-applied to the new import after solar.`}
+              </span>
+            </span>
+          </label>
         </div>
 
       </div>
@@ -985,6 +1081,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 gapWarning={gapWarning}
                 augustPromo={augustPromo}
                 suriaHomeRebate={suriaHomeRebate}
+                billOptions={billOptions}
                 onUpdate={handleUpdatePlan}
               />
             )}
@@ -1006,6 +1103,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 gapWarning={gapWarning}
                 augustPromo={augustPromo}
                 suriaHomeRebate={suriaHomeRebate}
+                billOptions={billOptions}
                 onUpdate={handleUpdatePlan}
               />
             )}
@@ -1027,6 +1125,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 gapWarning={gapWarning}
                 augustPromo={augustPromo}
                 suriaHomeRebate={suriaHomeRebate}
+                billOptions={billOptions}
                 onUpdate={handleUpdatePlan}
               />
             )}
@@ -1048,6 +1147,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 gapWarning={gapWarning}
                 augustPromo={augustPromo}
                 suriaHomeRebate={suriaHomeRebate}
+                billOptions={billOptions}
                 onUpdate={handleUpdatePlan}
               />
             )}
@@ -1069,6 +1169,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 gapWarning={gapWarning}
                 augustPromo={augustPromo}
                 suriaHomeRebate={suriaHomeRebate}
+                billOptions={billOptions}
                 onUpdate={handleUpdatePlan}
               />
             )}
@@ -1105,6 +1206,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                   gapWarning={gapWarning}
                   augustPromo={augustPromo}
                   suriaHomeRebate={suriaHomeRebate}
+                  billOptions={billOptions}
                   onUpdate={handleUpdatePlan}
                 />
               );
@@ -1165,6 +1267,7 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
                 gapWarning={gapWarning}
                 augustPromo={augustPromo}
                 suriaHomeRebate={suriaHomeRebate}
+                billOptions={billOptions}
               />
             ) : (
               <div className="h-full min-h-[300px] flex flex-col items-center justify-center bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-slate-400">
@@ -1207,6 +1310,16 @@ export const PlanRecommender: React.FC<PlanRecommenderProps> = ({
           currentBill={typeof billAmount === 'number' ? billAmount : 0}
           usageKwh={typeof usageKwh === 'number' ? usageKwh : 0}
           suriaHomeRebate={suriaHomeRebate}
+          panelWattage={panelWattage}
+        />
+      )}
+
+      {showSettings && (
+        <SettingsModal
+          settings={settings}
+          language={language}
+          onClose={() => setShowSettings(false)}
+          onSave={handleSaveSettings}
         />
       )}
 
@@ -1311,13 +1424,14 @@ interface RecommendationCardProps {
   gapWarning: boolean;
   augustPromo: boolean;
   suriaHomeRebate: boolean;
+  billOptions: BillOptions;
   onUpdate?: (id: string, newResult: RecommendationResult) => void;
 }
 
 const RecommendationCard: React.FC<RecommendationCardProps> = ({
   id, title, result: initialResult, badge, badgeColor, icon,
   currentBill, daytimePercent, isSelected, onToggle,
-  phase, usageKwh, gapWarning, augustPromo, suriaHomeRebate, onUpdate
+  phase, usageKwh, gapWarning, augustPromo, suriaHomeRebate, billOptions, onUpdate
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -1369,7 +1483,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     if (p < 6) return;
 
     const newRes = calculateScenario(
-      p, b, usageKwh, daytimePercent, phase, currentBill, gapWarning, augustPromo, suriaHomeRebate, removedUpgrade !== null
+      p, b, usageKwh, daytimePercent, phase, currentBill, gapWarning, augustPromo, suriaHomeRebate, removedUpgrade !== null, billOptions
     );
     if (!newRes) return;
 
@@ -1384,7 +1498,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     if (sameDims && samePrice && sameSavings) return;
 
     setResult(newRes);
-  }, [panels, batteries, usageKwh, daytimePercent, phase, currentBill, gapWarning, augustPromo, suriaHomeRebate, id, onUpdate, removedUpgrade]);
+  }, [panels, batteries, usageKwh, daytimePercent, phase, currentBill, gapWarning, augustPromo, suriaHomeRebate, billOptions, id, onUpdate, removedUpgrade]);
 
   // Total add-on price = sum of all stacked items.
   const addOnCost = useMemo(
@@ -1441,7 +1555,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   const kwacMatch = result.inverterSize.match(/([\d.]+)\s*kwac/i);
   const kwac = kwacMatch ? parseFloat(kwacMatch[1]) : 0;
   const roofAngles = kwac >= 15 ? 4 : kwac >= 10 ? 3 : 2;
-  const kwp = (result.panels * PANEL_WATTAGE / 1000).toFixed(2);
+  const kwp = (result.panels * (billOptions.panelWattage ?? PANEL_WATTAGE) / 1000).toFixed(2);
   const batUtilPercent = Math.round(result.batteryUtilization * 100);
 
   // Generate Scenarios
@@ -1469,8 +1583,8 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     const uniqueBills = Array.from(new Set(billsToCheck)).sort((a, b) => a - b);
 
     return uniqueBills.map(bill => {
-      const kwh = getKwhFromBill(bill);
-      const sim = simulateSolar(kwh, daytimePercent, result.panels, result.batteries);
+      const kwh = getKwhFromBill(bill, billOptions);
+      const sim = simulateSolar(kwh, daytimePercent, result.panels, result.batteries, billOptions);
       return {
         bill,
         newBill: sim.newBill.finalTotal,
@@ -1478,7 +1592,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
         pct: (sim.monthlySavings / bill) * 100
       };
     });
-  }, [currentBill, result.panels, result.batteries, daytimePercent]);
+  }, [currentBill, result.panels, result.batteries, daytimePercent, billOptions]);
 
   // Input Handlers
   const handlePanelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1945,7 +2059,134 @@ interface ComparisonModalProps {
   currentBill: number;
   usageKwh: number;
   suriaHomeRebate: boolean;
+  panelWattage: number;
 }
+
+interface SettingsModalProps {
+  settings: RecommenderSettings;
+  language: 'zh' | 'en';
+  onClose: () => void;
+  onSave: (settings: RecommenderSettings) => void;
+}
+
+const SettingsModal: React.FC<SettingsModalProps> = ({ settings, language, onClose, onSave }) => {
+  const zh = language === 'zh';
+  // Edited as text so a field can be cleared while typing. AFA is shown in sen, stored in RM.
+  const [threshold, setThreshold] = useState(String(settings.thresholdKwh));
+  const [afaSen, setAfaSen] = useState(String(+(settings.afaRate * 100).toFixed(4)));
+  const [wattage, setWattage] = useState(String(settings.panelWattage));
+
+  const thresholdNum = parseFloat(threshold);
+  const afaSenNum = parseFloat(afaSen);
+  const wattageNum = parseFloat(wattage);
+  const valid =
+    Number.isFinite(thresholdNum) && thresholdNum > 0 &&
+    Number.isFinite(afaSenNum) && afaSenNum > 0 &&
+    Number.isFinite(wattageNum) && wattageNum > 0;
+
+  const resetDefaults = () => {
+    setThreshold(String(DEFAULT_RECOMMENDER_SETTINGS.thresholdKwh));
+    setAfaSen(String(+(DEFAULT_RECOMMENDER_SETTINGS.afaRate * 100).toFixed(4)));
+    setWattage(String(DEFAULT_RECOMMENDER_SETTINGS.panelWattage));
+  };
+
+  const fields: { label: string; hint: string; value: string; set: (v: string) => void; unit: string }[] = [
+    {
+      label: zh ? '用电门槛' : 'Usage Threshold',
+      hint: zh ? '超过此用电量才收零售费、服务税及 AFA。' : 'Retail charge, service tax and AFA apply above this usage.',
+      value: threshold,
+      set: setThreshold,
+      unit: 'kWh'
+    },
+    {
+      label: zh ? 'AFA 费率' : 'AFA Rate',
+      hint: zh ? '勾选「包含 AFA」时，按总用电量收取。' : 'Charged on total import when "Include AFA" is ticked.',
+      value: afaSen,
+      set: setAfaSen,
+      unit: zh ? '仙/kWh' : 'sen/kWh'
+    },
+    {
+      label: zh ? '太阳能板功率' : 'Panel Wattage',
+      hint: zh ? '用于计算发电量及系统 kWp。' : 'Used for solar generation and system kWp.',
+      value: wattage,
+      set: setWattage,
+      unit: 'W'
+    }
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <Settings size={20} className="text-blue-600" />
+            {zh ? '计算设置' : 'Calculation Settings'}
+          </h3>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {fields.map(f => (
+            <label key={f.label} className="block">
+              <span className="text-sm font-bold text-slate-700">{f.label}</span>
+              <div className="mt-1.5 flex items-center rounded-lg border border-slate-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="any"
+                  value={f.value}
+                  onChange={e => f.set(e.target.value)}
+                  className="w-full bg-transparent px-3 py-2 text-base font-semibold text-slate-900 outline-none"
+                />
+                <span className="pr-3 text-sm text-slate-500 whitespace-nowrap">{f.unit}</span>
+              </div>
+              <span className="block text-xs text-slate-500 mt-1">{f.hint}</span>
+            </label>
+          ))}
+          {!valid && (
+            <p className="text-xs font-semibold text-rose-600">
+              {zh ? '所有数值必须大于 0。' : 'All values must be greater than 0.'}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-100">
+          <button
+            onClick={resetDefaults}
+            className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600"
+          >
+            <RefreshCw size={14} />
+            {zh ? '恢复默认' : 'Reset defaults'}
+          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100"
+            >
+              {zh ? '取消' : 'Cancel'}
+            </button>
+            <button
+              disabled={!valid}
+              onClick={() => onSave({ thresholdKwh: thresholdNum, afaRate: afaSenNum / 100, panelWattage: wattageNum })}
+              className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {zh ? '保存' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ComparisonModal: React.FC<ComparisonModalProps> = ({
   data,
@@ -1955,7 +2196,8 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
   daytimePercent,
   currentBill,
   usageKwh,
-  suriaHomeRebate
+  suriaHomeRebate,
+  panelWattage
 }) => {
   const tableRef = useRef<HTMLDivElement>(null);
   const [customerName, setCustomerName] = useState('');
@@ -2320,7 +2562,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
                   {data.map((item, idx) => (
                     <td key={idx} className="p-2 sm:p-4 align-top">
                       <div className="font-bold text-base sm:text-lg text-slate-900">{item.data.panels} {language === 'zh' ? '片电板' : 'Panels'}</div>
-                      <div className="text-xs sm:text-sm text-slate-500">{(item.data.panels * PANEL_WATTAGE / 1000).toFixed(2)} kWp</div>
+                      <div className="text-xs sm:text-sm text-slate-500">{(item.data.panels * panelWattage / 1000).toFixed(2)} kWp</div>
                       {item.data.batteries > 0 ? (
                         <div className="flex items-center gap-1.5 mt-1.5 sm:mt-2 text-xs sm:text-sm font-bold text-emerald-600 bg-emerald-50 w-fit max-w-full px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md">
                           <Battery size={14} className="shrink-0" />

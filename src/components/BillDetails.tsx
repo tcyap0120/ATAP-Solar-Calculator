@@ -56,7 +56,7 @@ export const BillDetails: React.FC<BillDetailsProps> = ({ data, title, isProject
         </div>
 
         <Row label="Base Charge" value={data.baseCharge} type="add" subtext="Tariff block rates" />
-        <Row label="Retail Charge" value={data.retailCharge} type="add" subtext="Applied if usage > 600kWh" />
+        <Row label="Retail Charge" value={data.retailCharge} type="add" subtext="Applied if usage > 800kWh" />
         <Row label="EE Incentive" value={data.discount} type="sub" subtext="Block-based discount" />
         
         {data.eeIncentiveAdjustment && data.eeIncentiveAdjustment !== 0 ? (
@@ -65,7 +65,7 @@ export const BillDetails: React.FC<BillDetailsProps> = ({ data, title, isProject
 
         <div className="my-1 border-t border-slate-100"></div>
         
-        <Row label="Service Tax (8%)" value={data.serviceTax} type="add" subtext="On portion > 600kWh" />
+        <Row label="Service Tax (8%)" value={data.serviceTax} type="add" subtext="On portion > 800kWh" />
         <Row label="KWTBB (1.6%)" value={data.kwtbb} type="add" subtext="Renewable Energy Fund" />
         
         {(data.exportCredit && data.exportCredit < 0) ? (
