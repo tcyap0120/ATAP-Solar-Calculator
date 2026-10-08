@@ -2093,7 +2093,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, language, onClo
   const fields: { label: string; hint: string; value: string; set: (v: string) => void; unit: string }[] = [
     {
       label: zh ? '用电门槛' : 'Usage Threshold',
-      hint: zh ? '超过此用电量才收零售费、服务税及 AFA。' : 'Retail charge, service tax and AFA apply above this usage.',
+      hint: zh ? '勾选 AFA 时，超过此用电量才收零售费、服务税及 AFA（不含 AFA 时按 600kWh）。' : 'With AFA included, retail charge, service tax and AFA apply above this usage (600 kWh without AFA).',
       value: threshold,
       set: setThreshold,
       unit: 'kWh'

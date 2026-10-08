@@ -61,8 +61,9 @@ export interface BillOptions {
   /** Add the Automated Fuel Adjustment charge (off by default). */
   includeAfa?: boolean;
   /**
-   * Usage above which the retail charge, service tax and AFA apply. Overrides
-   * RETAIL_CHARGE_THRESHOLD, TAX_THRESHOLD and AFA_WAIVER_THRESHOLD together.
+   * Usage above which the retail charge, service tax and AFA apply when AFA is included.
+   * Defaults to AFA_WAIVER_THRESHOLD. Ignored without AFA, where RETAIL_CHARGE_THRESHOLD
+   * and TAX_THRESHOLD (600 kWh) apply.
    */
   thresholdKwh?: number;
   /** AFA in RM per kWh. Defaults to AFA_RATE. */
@@ -102,8 +103,10 @@ export const calculateBill = (totalKwh: number, exportKwh: number = 0, options?:
     };
   }
 
-  const retailThreshold = options?.thresholdKwh ?? RETAIL_CHARGE_THRESHOLD;
-  const taxThreshold = options?.thresholdKwh ?? TAX_THRESHOLD;
+  // The higher threshold comes with AFA; without it the bill keeps the 600 kWh rules.
+  const afaThreshold = options?.thresholdKwh ?? AFA_WAIVER_THRESHOLD;
+  const retailThreshold = options?.includeAfa ? afaThreshold : RETAIL_CHARGE_THRESHOLD;
+  const taxThreshold = options?.includeAfa ? afaThreshold : TAX_THRESHOLD;
 
   // --- 1. Determine Shared Rates ---
   const discountRate = getDiscountRateRm(totalKwh);
